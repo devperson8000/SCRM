@@ -1,0 +1,250 @@
+# ShadowLink Browser - Major GUI & Reliability Overhaul
+
+Completely redesign ShadowLink into a premium browser experience rather than a simple web proxy. The goal is to make it feel like a polished, production-quality application that users would genuinely enjoy using every day. The redesign should prioritise stability, responsiveness, security, and an immersive user experience while keeping the existing functionality intact.
+
+## Design Vision
+
+Create a unique visual identity by combining three styles:
+
+* Apple's modern Liquid Glass design language (glassmorphism, layered blur, depth, transparency)
+* Hacker/cyberpunk aesthetics
+* Clean gaming-inspired RGB accents
+
+The interface should remain elegant and professional rather than looking cluttered. Use a dark theme with subtle neon green highlights alongside tasteful secondary accent colours. RGB effects should be soft and intelligent—not excessive.
+
+## Overall Feel
+
+The application should feel like a real browser, not a website pretending to be one.
+
+Everything should feel:
+
+* Fast
+* Premium
+* Smooth
+* Responsive
+* Modern
+* Fluid
+* High quality
+
+Every animation should be GPU-accelerated and remain smooth even on lower-end hardware.
+
+## Browser Interface
+
+Redesign the layout into a true browser interface including:
+
+* Floating address/search bar
+* Modern navigation buttons
+* Elegant tab system
+* Glass browser toolbar
+* Beautiful settings page
+* Dashboard
+* Home page
+* Browse page
+
+The floating search/address bar should become the centrepiece of the interface with smooth hover animations, glow effects, subtle blur, rounded corners, intelligent shadows, and satisfying transitions.
+
+## Home Page
+
+Create a modern browser home page including:
+
+* Large floating search bar
+* Favourite shortcuts
+* Recently visited websites
+* Quick actions
+* Beautiful animated background
+* Optional Matrix-inspired background animation
+* Soft floating particles
+* Dynamic lighting effects
+
+Everything should remain minimal and uncluttered.
+
+## Dashboard
+
+Build a polished dashboard showing:
+
+* Browser status
+* Performance information
+* Proxy health
+* Active connections
+* Memory usage
+* Website compatibility status
+* System health indicators
+
+Present everything using premium glass cards with animated progress indicators.
+
+## Settings
+
+Completely redesign settings into a modern control centre.
+
+Include appearance customisation such as:
+
+* Theme selector
+* Accent colour selector
+* Glass intensity slider
+* Blur amount
+* Animation intensity
+* RGB lighting toggle
+* Matrix background toggle
+* Compact mode
+* Performance mode
+* Accessibility options
+
+Changes should apply instantly without requiring refreshes.
+
+## Themes
+
+Support multiple built-in themes including:
+
+* ShadowLink Classic
+* Cyber Green
+* Midnight Blue
+* Purple Neon
+* Ice Glass
+* Hacker Terminal
+
+Themes should change colours, lighting and visual accents while maintaining the same clean interface.
+
+## Visual Effects
+
+Implement premium effects including:
+
+* Glassmorphism
+* Frosted panels
+* Animated gradients
+* Soft neon borders
+* Dynamic background lighting
+* Floating cards
+* Smooth page transitions
+* Blur effects
+* Hover lighting
+* Ripple click animations
+* Animated loading indicators
+* Elegant modal animations
+
+Every animation should feel natural and polished.
+
+## Reliability Improvements (Highest Priority)
+
+The browser must become significantly more reliable.
+
+Investigate and eliminate causes of:
+
+* Random website crashes
+* Blank pages
+* Failed page loads
+* Navigation errors
+* Unexpected refreshes
+* Memory leaks
+* Rendering glitches
+* Hanging requests
+
+Implement:
+
+* Comprehensive error handling
+* Retry logic
+* Graceful fallbacks
+* Better request timeouts
+* Automatic recovery
+* Proxy failover where appropriate
+* Robust exception handling
+* Defensive programming practices
+* Resource cleanup
+* Improved state management
+
+The browser should recover gracefully whenever possible rather than displaying a broken page.
+
+## Performance
+
+Optimise the application by:
+
+* Reducing unnecessary re-renders
+* Lazy loading components
+* Optimising animations
+* Efficient caching
+* Better memory management
+* Faster startup
+* Faster page switching
+* Faster navigation
+* Smoother scrolling
+* Better asset optimisation
+
+The interface should remain consistently responsive.
+
+## Security
+
+Improve security without compromising usability.
+
+Review the codebase for:
+
+* Input validation
+* Safe request handling
+* Protection against malformed requests
+* Secure defaults
+* Proper sanitisation
+* Safer proxy routing
+* Improved error reporting without exposing internal details
+
+## Keyboard Shortcuts
+
+Implement browser-style shortcuts including:
+
+* New Tab
+* Close Tab
+* Reopen Closed Tab
+* Refresh
+* Hard Refresh
+* Focus Address Bar
+* Find in Page
+* Zoom In
+* Zoom Out
+* Reset Zoom
+* Toggle Fullscreen
+* Open Settings
+* Open Dashboard
+* Open Incognito Window
+
+## Incognito Mode
+
+Create a dedicated incognito mode featuring:
+
+* Separate browsing session
+* No local history
+* No persistent cookies after closing
+* Distinct visual styling
+* Privacy indicator
+* Easy switching between normal and incognito sessions
+
+## User Experience
+
+Every interaction should feel polished.
+
+Buttons should have:
+
+* Hover animations
+* Press animations
+* Glow effects
+* Smooth transitions
+
+Cards should:
+
+* Lift slightly on hover
+* Cast dynamic shadows
+* React naturally to cursor movement
+
+Pages should:
+
+* Fade smoothly
+* Slide naturally
+* Never abruptly appear
+
+Loading states should be visually pleasing instead of blank screens.
+
+## Code Quality
+
+Refactor the project where necessary to improve maintainability.
+
+Organise components cleanly, remove duplicated logic, improve naming consistency, modularise large files, and ensure the architecture is scalable for future browser features.
+
+## Final Goal
+
+The finished product should feel like a genuine modern browser with its own identity—not simply a web proxy. It should combine the elegance of Apple's Liquid Glass design, the futuristic atmosphere of cyberpunk interfaces, and restrained gaming-inspired lighting into a cohesive experience. Above all, it must be stable, secure, responsive, visually impressive, and reliable enough that crashes, blank pages, and failed loads become exceptional rather than common.
