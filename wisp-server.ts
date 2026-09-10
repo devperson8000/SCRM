@@ -118,8 +118,9 @@ function isValidToken(token: string | null): boolean {
   // Bound the work an unauthenticated client can make us do: HMAC over an
   // arbitrarily long path segment is free CPU burn for the attacker.
   if (!token || token.length > 256) return false;
-  const [timestampStr, signature] = token.split(".");
-  if (!timestampStr || !signature) return false;
+  const match = /^(\d{13})\.([a-f0-9]{64})$/.exec(token);
+  if (!match) return false;
+  const [, timestampStr, signature] = match;
 
   const timestamp = Number(timestampStr);
   if (!Number.isFinite(timestamp)) return false;
@@ -372,7 +373,7 @@ if (!IS_CLUSTER_PRIMARY) {
 // Distinct from the per-connection safety nets above: a failure to bind the
 // listening port at all (EADDRINUSE, EACCES, ...) means there is nothing to
 // serve, so unlike a single bad connection this should exit loudly and let
-// the host's restart policy (Railway's restartPolicyType in railway.json)
+// the host's restart policy
 // bring up a fresh attempt, rather than staying alive dark and unreachable.
 server.on("error", (error) => {
   log("error", "server_error", { error: String(error) });
