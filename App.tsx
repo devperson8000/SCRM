@@ -26,11 +26,11 @@ const APP_TABS: Array<{
   label: string;
   icon: string;
 }> = [
-  { id: "browser", label: "Browser", icon: "◎" },
-  { id: "dashboard", label: "Overview", icon: "▦" },
-  { id: "requests", label: "Traffic", icon: "⇄" },
-  { id: "playground", label: "Lab", icon: "{ }" },
-  { id: "settings", label: "Settings", icon: "⚙" },
+  { id: "browser", label: "Browse", icon: "◎" },
+  { id: "dashboard", label: "Overview", icon: "◫" },
+  { id: "requests", label: "Traffic", icon: "↗" },
+  { id: "playground", label: "Lab", icon: "⌘" },
+  { id: "settings", label: "Settings", icon: "◇" },
 ];
 
 const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
@@ -149,7 +149,7 @@ const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
             <div class="brand">
               <span class="brand-mark">
                 <span class="ui-icon" aria-hidden="true">
-                  ⚡
+                  S
                 </span>
               </span>
               <span class="brand-copy">
@@ -267,37 +267,42 @@ const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
 
 App.style = css`
   :scope {
-    --surface-0: #05090b;
-    --surface-1: #091013;
-    --surface-2: #0d171a;
-    --surface-3: #132125;
-    --line: rgba(190, 230, 219, 0.12);
-    --line-strong: rgba(190, 230, 219, 0.2);
-    --text-1: #eef7f4;
-    --text-2: #a7bab5;
-    --text-3: #71847f;
+    --surface-0: #030607;
+    --surface-1: #07100f;
+    --surface-2: #0a1715;
+    --surface-3: #10211e;
+    --line: rgba(183, 255, 225, 0.1);
+    --line-strong: rgba(194, 255, 230, 0.2);
+    --text-1: #f2fff9;
+    --text-2: #a8bdb5;
+    --text-3: #6f857d;
     --danger: #ff7272;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
     position: absolute;
     inset: 0;
-    background:
-      radial-gradient(
-        circle at 12% 18%,
-        rgba(0, 255, 136, 0.08),
-        transparent 32%
-      ),
-      radial-gradient(
-        circle at 88% 86%,
-        rgba(0, 170, 255, 0.07),
-        transparent 34%
-      ),
-      var(--surface-0);
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
     color: var(--text-1);
-    font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at 8% -10%, var(--accent-dim, rgba(0,255,136,.13)), transparent 34%),
+      radial-gradient(circle at 92% 115%, rgba(41, 121, 255, .12), transparent 38%),
+      linear-gradient(145deg, #030706 0%, #06100f 48%, #030809 100%);
+    font-family: Inter, "SF Pro Display", "Segoe UI Variable", "Segoe UI", sans-serif;
+    isolation: isolate;
+  }
+  :scope::before {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: .2;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(to bottom, #000, transparent 82%);
+    content: "";
   }
   .app-content {
     position: relative;
@@ -305,6 +310,7 @@ App.style = css`
     display: flex;
     flex: 1;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
   }
   .app-content.browser-workspace {
@@ -320,122 +326,154 @@ App.style = css`
     overflow: hidden;
   }
   .top-bar {
+    position: relative;
     display: flex;
     align-items: stretch;
     min-height: 46px;
-    background: linear-gradient(
-      180deg,
-      rgba(12, 22, 24, 0.98),
-      rgba(7, 12, 15, 0.96)
-    );
-    border-bottom: 1px solid var(--line);
-    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
     flex-shrink: 0;
-    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(13,25,23,.94), rgba(5,11,12,.94));
+    box-shadow:
+      0 14px 38px rgba(0,0,0,.34),
+      inset 0 1px rgba(255,255,255,.06);
+    backdrop-filter: blur(26px) saturate(155%);
+  }
+  .top-bar::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--accent-border, rgba(0,255,136,.38)), transparent);
+    content: "";
   }
   .brand {
     display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 0 14px 0 11px;
+    gap: 10px;
+    min-width: 142px;
+    padding: 0 15px 0 11px;
     border-right: 1px solid var(--line);
     white-space: nowrap;
-  }
-  .brand strong {
-    color: var(--text-1);
-    font-size: 0.84rem;
-    font-weight: 720;
-  }
-  .brand small {
-    color: var(--text-3);
-    font-size: 0.52rem;
-    font-weight: 750;
-    letter-spacing: 0.12em;
   }
   .brand-copy {
     display: flex;
     flex-direction: column;
     gap: 1px;
   }
+  .brand strong {
+    color: #f5fff9;
+    font-size: .84rem;
+    font-weight: 760;
+    letter-spacing: -.015em;
+  }
+  .brand small {
+    color: var(--accent-text, #70ffb7);
+    font-size: .49rem;
+    font-weight: 800;
+    letter-spacing: .16em;
+  }
   .brand-mark {
+    position: relative;
     display: grid;
+    width: 29px;
+    height: 29px;
     place-items: center;
-    width: 27px;
-    height: 27px;
-    border: 1px solid var(--accent-border, rgba(0, 255, 136, 0.4));
-    border-radius: 7px;
-    background: var(--accent-dim, rgba(0, 255, 136, 0.12));
-    color: var(--accent-text, #00ff88);
-    box-shadow: 0 0 18px var(--accent-glow, rgba(0, 255, 136, 0.16));
+    overflow: hidden;
+    border: 1px solid var(--accent-border, rgba(0,255,136,.42));
+    border-radius: 9px;
+    color: #eafff3;
+    background:
+      linear-gradient(145deg, var(--accent-dim, rgba(0,255,136,.2)), rgba(255,255,255,.035));
+    box-shadow:
+      0 0 24px var(--accent-glow, rgba(0,255,136,.18)),
+      inset 0 1px rgba(255,255,255,.16);
+  }
+  .brand-mark::after {
+    position: absolute;
+    inset: -40%;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.34), transparent 65%);
+    transform: translateX(-60%) rotate(8deg);
+    animation: brand-sheen 6s ease-in-out infinite;
+    content: "";
   }
   .brand-mark .ui-icon {
-    font-size: 17px;
+    z-index: 1;
+    font-size: 14px;
+    font-weight: 900;
+  }
+  @keyframes brand-sheen {
+    0%, 70% { transform: translateX(-65%) rotate(8deg); }
+    100% { transform: translateX(65%) rotate(8deg); }
   }
   .tab-bar {
     display: flex;
-    align-items: stretch;
-    gap: 4px;
-    padding: 5px 6px;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 7px;
   }
   .tab-button {
     position: relative;
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-height: 34px;
+    padding: 6px 11px;
     border: 1px solid transparent;
-    background: transparent;
+    border-radius: 10px;
     color: var(--text-3);
-    padding: 6px 10px;
-    border-radius: 7px;
+    background: transparent;
     cursor: pointer;
     font: inherit;
-    font-size: 0.82rem;
+    font-size: .78rem;
+    font-weight: 640;
     white-space: nowrap;
-    transition:
-      color 160ms ease,
-      background 160ms ease,
-      border-color 160ms ease;
+    transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
   }
   .tab-button:hover {
-    background: rgba(126, 255, 211, 0.1);
-    color: #fff;
+    border-color: rgba(255,255,255,.075);
+    color: #eafff5;
+    background: rgba(255,255,255,.055);
+    transform: translateY(-1px);
   }
   .tab-button.active {
-    background: linear-gradient(
-      180deg,
-      rgba(126, 255, 211, 0.16),
-      rgba(126, 255, 211, 0.08)
-    );
-    color: #fff;
-    border-color: rgba(126, 255, 211, 0.28);
-    box-shadow: 0 5px 18px rgba(0, 255, 136, 0.08);
+    border-color: var(--accent-border, rgba(0,255,136,.28));
+    color: #f4fff9;
+    background: linear-gradient(145deg, var(--accent-dim, rgba(0,255,136,.16)), rgba(255,255,255,.035));
+    box-shadow:
+      0 8px 24px rgba(0,0,0,.2),
+      inset 0 1px rgba(255,255,255,.08);
   }
   .tab-button.active::after {
     position: absolute;
-    right: 10px;
-    bottom: -5px;
-    left: 10px;
+    right: 12px;
+    bottom: -6px;
+    left: 12px;
     height: 2px;
-    border-radius: 2px 2px 0 0;
+    border-radius: 999px;
     background: var(--accent, #00ff88);
-    box-shadow: 0 0 8px var(--accent-glow, rgba(0, 255, 136, 0.3));
+    box-shadow: 0 0 12px var(--accent-glow, rgba(0,255,136,.48));
     content: "";
   }
   .tab-button .ui-icon {
     display: inline-grid;
-    min-width: 16px;
+    min-width: 15px;
     place-items: center;
-    font-size: 16px;
-    font-weight: 650;
+    color: currentColor;
+    font-size: 15px;
+    font-weight: 700;
     line-height: 1;
   }
+  .tab-button.active .ui-icon { color: var(--accent-text, #70ffb7); }
   .tab-count {
-    min-width: 17px;
-    padding: 1px 4px;
-    border-radius: 5px;
-    background: var(--accent-dim, rgba(0, 255, 136, 0.12));
-    color: var(--accent-text, #00ff88);
-    font-size: 0.62rem;
+    min-width: 18px;
+    padding: 2px 5px;
+    border: 1px solid var(--accent-border, rgba(0,255,136,.25));
+    border-radius: 999px;
+    color: var(--accent-text, #70ffb7);
+    background: var(--accent-dim, rgba(0,255,136,.12));
+    font-size: .59rem;
     font-variant-numeric: tabular-nums;
     text-align: center;
   }
@@ -444,44 +482,46 @@ App.style = css`
     align-items: center;
     gap: 7px;
     margin-left: auto;
-    padding: 0 12px;
+    padding: 0 11px 0 4px;
   }
   .mode-button {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 5px 9px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.11);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    color: #a9b6b8;
+    color: #91a59e;
+    background: rgba(255,255,255,.035);
     cursor: pointer;
     font: inherit;
-    font-size: 0.72rem;
-    transition: all 160ms ease;
+    font-size: .68rem;
+    font-weight: 650;
+    transition: color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
   }
   .mode-button:hover,
   .mode-button.active {
-    border-color: var(--accent-border, rgba(0, 255, 136, 0.4));
-    background: var(--accent-dim, rgba(0, 255, 136, 0.15));
-    color: var(--accent-text, #00ff88);
+    border-color: var(--accent-border, rgba(0,255,136,.4));
+    color: var(--accent-text, #70ffb7);
+    background: var(--accent-dim, rgba(0,255,136,.13));
+    box-shadow: 0 0 18px var(--accent-glow, rgba(0,255,136,.12));
   }
-  .mode-button .material-symbols-outlined {
-    font-size: 14px !important;
-  }
+  .mode-button .material-symbols-outlined { font-size: 14px !important; }
   .mode-toast {
     position: fixed;
-    top: 49px;
+    top: 54px;
     left: 50%;
     z-index: 20;
     transform: translateX(-50%);
-    padding: 8px 13px;
-    border: 1px solid var(--accent-border, rgba(0, 255, 136, 0.4));
+    padding: 9px 14px;
+    border: 1px solid var(--accent-border, rgba(0,255,136,.4));
     border-radius: 999px;
-    background: rgba(7, 17, 17, 0.94);
-    color: var(--accent-text, #00ff88);
-    font-size: 0.76rem;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+    color: var(--accent-text, #70ffb7);
+    background: rgba(5,14,13,.94);
+    box-shadow: 0 16px 42px rgba(0,0,0,.4), inset 0 1px rgba(255,255,255,.08);
+    backdrop-filter: blur(20px);
+    font-size: .72rem;
+    font-weight: 650;
   }
   .tab-panel {
     display: none;
@@ -491,52 +531,31 @@ App.style = css`
   }
   .tab-panel.active {
     display: flex;
-    animation: tab-panel-in 180ms ease;
+    animation: tab-panel-in 220ms cubic-bezier(.2,.8,.2,1);
   }
   @keyframes tab-panel-in {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(5px) scale(.998); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  button:focus-visible {
+    outline: 2px solid var(--accent, #00ff88);
+    outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
-    .tab-panel.active {
-      animation: none;
-    }
+    .tab-panel.active, .brand-mark::after { animation: none; }
   }
-  @media (max-width: 900px) {
-    .brand small {
-      display: none;
-    }
-    .tab-label {
-      display: none;
-    }
-    .tab-button {
-      padding-inline: 9px;
-    }
-    .mode-button span:last-child {
-      display: none;
-    }
+  @media (max-width: 1080px) {
+    .brand { min-width: auto; }
+    .tab-label { display: none; }
+    .tab-button { padding-inline: 10px; }
   }
-  @media (max-width: 620px) {
-    .brand {
-      padding-inline: 8px;
-    }
-    .brand-copy {
-      display: none;
-    }
-    .tab-button {
-      padding-inline: 7px;
-    }
-    .top-actions {
-      gap: 3px;
-      padding-inline: 4px;
-    }
+  @media (max-width: 760px) {
+    .brand { padding-inline: 8px; border-right: 0; }
+    .brand-copy, .mode-button span:last-child { display: none; }
+    .tab-bar { padding-inline: 2px; }
+    .tab-button { padding-inline: 7px; }
+    .top-actions { gap: 3px; padding-right: 5px; }
   }
-`;
+`
 
 export default App;
