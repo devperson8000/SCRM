@@ -1,0 +1,14 @@
+{
+  "name": "Scramjet Automated Workspace",
+  "forwardPorts": [4141, 8080],
+  "portsAttributes": {
+    "4141": {
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "8080": {
+      "visibility": "public"
+    }
+  },
+  "postStartCommand": "pnpm dev && pnpx @mercuryworkshop/wisp-js --port 8080"
+}

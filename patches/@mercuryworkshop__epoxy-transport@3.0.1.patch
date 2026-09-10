@@ -1,0 +1,61 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 9c29a1bf897200d486cc7a36aa1a889d215b3f9c..d9725387642136a996d8d36b3e8304df694aea9a 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -10,6 +10,7 @@ export type EpoxyOptions = {
+     redirect_limit?: number;
+     header_limit?: number;
+     buffer_size?: number;
++    disable_certificate_validation?: boolean;
+ };
+ export default class EpoxyTransport implements ProxyTransport {
+     ready: boolean;
+diff --git a/dist/index.js b/dist/index.js
+index 0506e7ad09d5b9ce2fa8a156fa80fe78852b1aaa..572bde212432d1ef57cf9fadb300b12aee9cb4e0 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1557,7 +1557,8 @@ var opts = [
+   "wisp_ws_protocols",
+   "redirect_limit",
+   "header_limit",
+-  "buffer_size"
++  "buffer_size",
++  "disable_certificate_validation"
+ ];
+ var EpoxyTransport = class {
+   ready = false;
+diff --git a/dist/index.mjs b/dist/index.mjs
+index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..cc0a44a4e2fd9b3abda447ce8b71e6a71995066f 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1528,7 +1528,8 @@ var opts = [
+   "wisp_ws_protocols",
+   "redirect_limit",
+   "header_limit",
+-  "buffer_size"
++  "buffer_size",
++  "disable_certificate_validation"
+ ];
+ var EpoxyTransport = class {
+   ready = false;
+diff --git a/src/main.ts b/src/main.ts
+index 1107e3a22c6727668a003e5ffa8d1309e1513dc2..2ccce246e1ec35c8eb29ccc01e5a7b851fbc5c4d 100644
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -24,6 +24,8 @@ export type EpoxyOptions = {
+ 	redirect_limit?: number;
+ 	header_limit?: number;
+ 	buffer_size?: number;
++
++	disable_certificate_validation?: boolean;
+ };
+ const opts = [
+ 	"wisp_v2",
+@@ -34,6 +36,7 @@ const opts = [
+ 	"redirect_limit",
+ 	"header_limit",
+ 	"buffer_size",
++	"disable_certificate_validation",
+ ];
+ 
+ export default class EpoxyTransport implements ProxyTransport {

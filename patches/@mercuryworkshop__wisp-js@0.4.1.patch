@@ -1,0 +1,81 @@
+diff --git a/src/server/filter.mjs b/src/server/filter.mjs
+index 02d7c276b1e189d5965978d2f035ba7494738e63..fa52e0faa83f9749a43c3f9544672a25c4e7f8dc 100644
+--- a/src/server/filter.mjs
++++ b/src/server/filter.mjs
+@@ -100,7 +100,17 @@ export async function is_stream_allowed(connection, type, hostname, port) {
+     return close_reasons.ConnThrottled;
+   if (options.stream_limit_per_host !== -1) {
+     let streams_per_host = 0;
+-    for (let stream of connection.streams) {
++    // connection.streams is a plain object keyed by stream id (see
++    // server/connection.mjs), not an iterable -- `for...of` over it throws
++    // "connection.streams is not iterable" and, because create_stream()
++    // runs this filter inside a floating async IIFE, the rejection is
++    // unhandled and the stream is silently never opened. Upstream never
++    // hit this because stream_limit_per_host defaults to -1, which skips
++    // the block entirely; any deployment that actually sets the limit
++    // (devserver.ts and wisp-server.ts both do) fails to open every single
++    // stream. The total-count check on the line above already uses
++    // Object.keys for the same structure.
++    for (let stream of Object.values(connection.streams)) {
+       if (stream.socket.hostname === hostname) {
+         streams_per_host++;
+       }
+diff --git a/src/server/net.mjs b/src/server/net.mjs
+index 426329ab0d75b6b424f4e8afdc746e606ab14e61..85d6956201b2146fbe189bdfa608ed37067cd961 100644
+--- a/src/server/net.mjs
++++ b/src/server/net.mjs
+@@ -133,15 +133,34 @@ export class NodeTCPSocket {
+     await new Promise((resolve, reject) => {
+       this.socket = new net.Socket();
+       this.socket.setNoDelay(true);
++
++      // Without an explicit timeout, a destination that never completes the
++      // TCP handshake (firewalled/blackholed, not merely refused) leaves
++      // this promise pending indefinitely, bounded only by the OS's own
++      // connect timeout (often minutes) -- leaking a socket and a stream
++      // per stuck attempt. Abort and surface a clear error instead.
++      let connect_timer = null;
++      if (options.connect_timeout_ms > 0) {
++        connect_timer = setTimeout(() => {
++          logging.warn(`tcp connect to ${this.hostname}:${this.port} timed out after ${options.connect_timeout_ms}ms`);
++          if (this.socket) this.socket.destroy();
++          reject(new Error(`connect timeout after ${options.connect_timeout_ms}ms connecting to ${this.hostname}:${this.port}`));
++        }, options.connect_timeout_ms);
++      }
++
+       this.socket.on("connect", () => {
+         this.connected = true;
++        if (connect_timer) clearTimeout(connect_timer);
+         resolve();
+       });
+       this.socket.on("data", (data) => {
+         this.data_queue.put(data);
+       });
+-      this.socket.on("close", (error) => {
+-        if (error && !this.connected) reject();
++      this.socket.on("close", (hadError) => {
++        if (connect_timer) clearTimeout(connect_timer);
++        if (hadError && !this.connected) {
++          reject(new Error(`connection to ${this.hostname}:${this.port} closed with an error before connecting`));
++        }
+         else this.data_queue.close();
+         this.socket = null;
+       });
+diff --git a/src/server/options.mjs b/src/server/options.mjs
+index 91a07cdae0ed0259dfcdf02892b131533fc1d49c..fa641ad225a87b471b3d410c37f725c5da231bca 100644
+--- a/src/server/options.mjs
++++ b/src/server/options.mjs
+@@ -25,6 +25,12 @@ export const options = {
+   //misc options
+   parse_real_ip: true,
+   parse_real_ip_from: ["127.0.0.1"],
++  // Upper bound (ms) on how long an outbound TCP connect to a destination
++  // may take before it's aborted. Without this, a blackholed/firewalled
++  // destination leaves the stream "connecting" forever (bounded only by the
++  // OS's own TCP connect timeout, which can be minutes), leaking a socket
++  // and a pending stream per stuck attempt. Set to 0 to disable.
++  connect_timeout_ms: 10000,
+ 
+   //wisp v2 options
+   wisp_version: 2,

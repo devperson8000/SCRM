@@ -1,0 +1,69 @@
+{
+  "name": "@mercuryworkshop/scramjet",
+  "version": "2.0.67-alpha.2",
+  "description": "",
+  "type": "module",
+  "module": "./dist/scramjet.mjs",
+  "types": "./dist/types/typesEntry.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/typesEntry.d.ts",
+      "import": "./dist/scramjet.mjs",
+      "require": "./lib/index.cjs"
+    }
+  },
+  "keywords": [],
+  "author": "Mercury Workshop",
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "dev": "node --no-warnings=ExperimentalWarning devserver.ts",
+    "rewriter:build": "cd rewriter/wasm && bash build.sh",
+    "build": "rspack build --mode production",
+    "vercel-build": "vite build --outDir vercel-static",
+    "wisp-server": "node --no-warnings=ExperimentalWarning wisp-server.ts",
+    "format": "prettier --write ."
+  },
+  "pnpm": {
+    "overrides": {
+      "htmlparser2": "12.0.0"
+    },
+    "patchedDependencies": {
+      "htmlparser2@12.0.0": "patches/htmlparser2@12.0.0.patch",
+      "@mercuryworkshop/wisp-js@0.4.1": "patches/@mercuryworkshop__wisp-js@0.4.1.patch",
+      "@mercuryworkshop/epoxy-transport@3.0.1": "patches/@mercuryworkshop__epoxy-transport@3.0.1.patch"
+    }
+  },
+  "devDependencies": {
+    "@rsdoctor/rspack-plugin": "^1.4.0",
+    "@rspack/cli": "^1.5.8",
+    "@rspack/core": "^1.5.8",
+    "@types/node": "^22.0.0",
+    "@vercel/node": "^5.4.7",
+    "chafa-wasm": "^0.3.1",
+    "chalk": "^5.6.2",
+    "eslint": "^10.2.0",
+    "ts-checker-rspack-plugin": "^1.1.6",
+    "tsc-alias": "^1.8.16",
+    "vite": "^7.3.0",
+    "vite-plugin-static-copy": "^3.1.4"
+  },
+  "dependencies": {
+    "@mercuryworkshop/epoxy-transport": "catalog:",
+    "@mercuryworkshop/libcurl-transport": "catalog:",
+    "@mercuryworkshop/proxy-transports": "catalog:",
+    "@mercuryworkshop/scramjet": "workspace:*",
+    "@mercuryworkshop/scramjet-controller": "workspace:*",
+    "@mercuryworkshop/scramjet-utils": "workspace:*",
+    "@mercuryworkshop/wisp-js": "catalog:",
+    "dom-serializer": "^3.1.1",
+    "domhandler": "^6.0.1",
+    "dreamland": "^0.1.3",
+    "htmlparser2": "^12.0.0",
+    "monaco-editor": "^0.56.0",
+    "prettier": "^3.6.2"
+  }
+}

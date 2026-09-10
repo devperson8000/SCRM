@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scramjet</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --accent: #00ff88;
+        --accent-dim: rgba(0, 255, 136, 0.12);
+        --accent-glow: rgba(0, 255, 136, 0.28);
+        --accent-border: rgba(0, 255, 136, 0.4);
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+          system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        background: #060c0e;
+        color: #fff;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Aurora background */
+      .aurora {
+        position: fixed;
+        inset: -20%;
+        background:
+          radial-gradient(
+            ellipse 80% 60% at 15% 20%,
+            rgba(0, 255, 136, 0.18) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 70% 50% at 85% 10%,
+            rgba(0, 180, 255, 0.14) 0%,
+            transparent 55%
+          ),
+          radial-gradient(
+            ellipse 90% 70% at 70% 90%,
+            rgba(120, 40, 255, 0.12) 0%,
+            transparent 55%
+          ),
+          radial-gradient(
+            ellipse 60% 50% at 10% 80%,
+            rgba(0, 255, 136, 0.08) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse 100% 80% at 50% 50%,
+            rgba(4, 12, 8, 0.92) 0%,
+            transparent 100%
+          );
+        animation: aurora 22s ease-in-out infinite alternate;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      @keyframes aurora {
+        0% {
+          transform: translate(0%, 0%) scale(1);
+        }
+        33% {
+          transform: translate(2%, -3%) scale(1.04);
+        }
+        66% {
+          transform: translate(-2%, 2%) scale(0.97);
+        }
+        100% {
+          transform: translate(1%, -1%) scale(1.02);
+        }
+      }
+
+      /* Matrix canvas */
+      #matrixCanvas {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.46;
+        mix-blend-mode: screen;
+        transition: opacity 0.5s ease;
+      }
+      #matrixCanvas.active {
+        opacity: 0.46;
+      }
+
+      /* Floating particles */
+      .particles {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .particle {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0;
+        animation: floatParticle linear infinite;
+      }
+
+      @keyframes floatParticle {
+        0% {
+          opacity: 0;
+          transform: translateY(0) translateX(0) scale(0);
+        }
+        10% {
+          opacity: 0.6;
+        }
+        90% {
+          opacity: 0.2;
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-120px) translateX(var(--dx, 20px)) scale(1.5);
+        }
+      }
+
+      /* Main content */
+      .center {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 32px;
+        width: min(580px, 92vw);
+      }
+
+      /* Wordmark */
+      .wordmark {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .logo-emblem {
+        position: relative;
+        width: 52px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 4px;
+      }
+
+      .logo-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 2px solid transparent;
+      }
+
+      .ring-outer {
+        inset: 0;
+        border-top-color: var(--accent);
+        border-right-color: rgba(0, 255, 136, 0.35);
+        animation: spinCW 3s linear infinite;
+      }
+
+      .ring-inner {
+        inset: 9px;
+        border-bottom-color: var(--accent);
+        border-left-color: rgba(0, 255, 136, 0.25);
+        animation: spinCCW 2s linear infinite;
+      }
+
+      .logo-core {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow:
+          0 0 20px var(--accent),
+          0 0 40px var(--accent-glow);
+        animation: corePulse 2s ease-in-out infinite;
+      }
+
+      @keyframes spinCW {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes spinCCW {
+        to {
+          transform: rotate(-360deg);
+        }
+      }
+      @keyframes corePulse {
+        0%,
+        100% {
+          box-shadow:
+            0 0 16px var(--accent),
+            0 0 32px var(--accent-glow);
+        }
+        50% {
+          box-shadow:
+            0 0 8px var(--accent),
+            0 0 16px var(--accent-glow);
+        }
+      }
+
+      .logo-text {
+        font-size: 3.4rem;
+        font-weight: 800;
+        letter-spacing: -0.048em;
+        background: linear-gradient(
+          135deg,
+          #fff 10%,
+          var(--accent) 55%,
+          rgba(0, 200, 255, 0.9)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+        filter: drop-shadow(0 0 32px rgba(0, 255, 136, 0.3));
+      }
+
+      .logo-sub {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+
+      /* Search bar */
+      .search-wrap {
+        width: 100%;
+      }
+
+      .search-pill {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-top: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 36px;
+        padding: 14px 18px;
+        gap: 12px;
+        backdrop-filter: blur(32px) saturate(180%);
+        -webkit-backdrop-filter: blur(32px) saturate(180%);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.12) inset,
+          0 12px 48px rgba(0, 0, 0, 0.35),
+          0 0 0 0 var(--accent-glow);
+        transition: all 0.22s ease;
+      }
+
+      .search-pill:focus-within {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-border);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.15) inset,
+          0 0 0 3px var(--accent-glow),
+          0 16px 56px rgba(0, 0, 0, 0.4);
+      }
+
+      .search-icon {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        opacity: 0.4;
+        transition: opacity 0.2s;
+      }
+
+      .search-pill:focus-within .search-icon {
+        opacity: 0.8;
+        color: var(--accent);
+      }
+
+      .search-icon svg {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .search-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #fff;
+        font-size: 1.05rem;
+        font-family: inherit;
+        font-weight: 400;
+        caret-color: var(--accent);
+      }
+
+      .search-input::placeholder {
+        color: rgba(255, 255, 255, 0.28);
+      }
+
+      .search-btn {
+        flex-shrink: 0;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-border);
+        border-radius: 24px;
+        color: var(--accent);
+        cursor: pointer;
+        padding: 7px 20px;
+        font-size: 0.82rem;
+        font-family: inherit;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+      }
+
+      .search-btn:hover {
+        background: var(--accent-glow);
+        box-shadow: 0 0 16px var(--accent-glow);
+      }
+
+      /* Quick links */
+      .quick-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .quick-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-top: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 20px;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 0.78rem;
+        font-family: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.18s ease;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+      }
+
+      .quick-link:hover {
+        background: rgba(255, 255, 255, 0.11);
+        color: rgba(255, 255, 255, 0.95);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.09) inset,
+          0 6px 20px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(0, 255, 136, 0.15);
+      }
+
+      .quick-link img {
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+        opacity: 0.85;
+        flex-shrink: 0;
+      }
+
+      /* Version badge */
+      .version-badge {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.18);
+        letter-spacing: 0.02em;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .version-badge a {
+        color: rgba(255, 255, 255, 0.3);
+        text-decoration: none;
+        font-family: "SF Mono", monospace;
+      }
+      .version-badge a:hover {
+        color: var(--accent);
+      }
+
+      /* Scan line overlay */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.03) 2px,
+          rgba(0, 0, 0, 0.03) 4px
+        );
+        pointer-events: none;
+        z-index: 2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="aurora"></div>
+    <canvas id="matrixCanvas"></canvas>
+    <div class="particles" id="particles"></div>
+
+    <div class="center">
+      <div class="wordmark">
+        <div class="logo-emblem">
+          <div class="logo-ring ring-outer"></div>
+          <div class="logo-ring ring-inner"></div>
+          <div class="logo-core"></div>
+        </div>
+        <span class="logo-text">Scramjet</span>
+        <span class="logo-sub">Web Proxy Engine</span>
+      </div>
+
+      <div class="search-wrap">
+        <form id="searchForm">
+          <div class="search-pill">
+            <span class="search-icon">
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="16.5" y1="16.5" x2="22" y2="22" />
+              </svg>
+            </span>
+            <input
+              class="search-input"
+              id="searchInput"
+              type="text"
+              placeholder="Search the web or enter a URL..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="submit" class="search-btn">Go</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="quick-links">
+        <a class="quick-link" href="#" data-url="https://google.com">
+          <img
+            src="https://www.google.com/s2/favicons?domain=google.com&sz=32"
+            alt=""
+            onerror="this.style.display='none'"
+          />
+          Google
+        </a>
+        <a class="quick-link" href="#" data-url="https://youtube.com">
+          <img
+            src="https://www.google.com/s2/favicons?domain=youtube.com&sz=32"
+            alt=""
+            onerror="this.style.display='none'"
+          />
+          YouTube
+        </a>
+        <a class="quick-link" href="#" data-url="https://github.com">
+          <img
+            src="https://www.google.com/s2/favicons?domain=github.com&sz=32"
+            alt=""
+            onerror="this.style.display='none'"
+          />
+          GitHub
+        </a>
+        <a class="quick-link" href="#" data-url="https://wikipedia.org">
+          <img
+            src="https://www.google.com/s2/favicons?domain=wikipedia.org&sz=32"
+            alt=""
+            onerror="this.style.display='none'"
+          />
+          Wikipedia
+        </a>
+        <a class="quick-link" href="#" data-url="https://reddit.com">
+          <img
+            src="https://www.google.com/s2/favicons?domain=reddit.com&sz=32"
+            alt=""
+            onerror="this.style.display='none'"
+          />
+          Reddit
+        </a>
+        <a class="quick-link" href="#" data-url="https://discord.com">
+          <img
+            src="https://www.google.com/s2/favicons?domain=discord.com&sz=32"
+            alt=""
+            onerror="this.style.display='none'"
+          />
+          Discord
+        </a>
+      </div>
+
+      <div class="version-badge">
+        v{{SCRAMJET_VERSION}} &middot;
+        <a
+          href="https://github.com/MercuryWorkshop/scramjet/commit/{{SCRAMJET_BUILD}}"
+          target="_blank"
+          >{{SCRAMJET_BUILD}}</a
+        >
+        &middot; {{SCRAMJET_DATE_PRETTY}}
+      </div>
+    </div>
+
+    <script>
+      // Read theme from parent localStorage if possible
+      try {
+        var stored = localStorage.getItem("scramjet-appearance");
+        if (stored) {
+          var app = JSON.parse(stored);
+          var themes = {
+            "cyber-green": {
+              accent: "#00ff88",
+              glow: "rgba(0,255,136,0.28)",
+              border: "rgba(0,255,136,0.4)",
+              dim: "rgba(0,255,136,0.12)",
+            },
+            classic: {
+              accent: "#a078ff",
+              glow: "rgba(160,120,255,0.28)",
+              border: "rgba(160,120,255,0.4)",
+              dim: "rgba(160,120,255,0.12)",
+            },
+            "midnight-blue": {
+              accent: "#00a8ff",
+              glow: "rgba(0,168,255,0.28)",
+              border: "rgba(0,168,255,0.4)",
+              dim: "rgba(0,168,255,0.12)",
+            },
+            "purple-neon": {
+              accent: "#bf5fff",
+              glow: "rgba(191,95,255,0.28)",
+              border: "rgba(191,95,255,0.4)",
+              dim: "rgba(191,95,255,0.12)",
+            },
+            "ice-glass": {
+              accent: "#88d8ff",
+              glow: "rgba(136,216,255,0.22)",
+              border: "rgba(136,216,255,0.35)",
+              dim: "rgba(136,216,255,0.1)",
+            },
+            "hacker-terminal": {
+              accent: "#00ff41",
+              glow: "rgba(0,255,65,0.26)",
+              border: "rgba(0,255,65,0.38)",
+              dim: "rgba(0,255,65,0.1)",
+            },
+          };
+          var t = themes[app.theme] || themes["cyber-green"];
+          document.documentElement.style.setProperty("--accent", t.accent);
+          document.documentElement.style.setProperty("--accent-glow", t.glow);
+          document.documentElement.style.setProperty(
+            "--accent-border",
+            t.border,
+          );
+          document.documentElement.style.setProperty("--accent-dim", t.dim);
+        }
+      } catch (e) {}
+      // Always run the welcome-page rain, even before appearance settings exist.
+      document.getElementById("matrixCanvas").classList.add("active");
+      startMatrix();
+
+      function navigate(raw) {
+        var url = raw.trim();
+        if (!url) return;
+        if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(url)) {
+          if (/^[\w-]+(\.[\w-]+)+(\/|$)/.test(url)) {
+            url = "https://" + url;
+          } else {
+            url = "https://www.google.com/search?q=" + encodeURIComponent(url);
+          }
+        }
+        window.parent.postMessage({ type: "scramjet-navigate", url: url }, "*");
+      }
+
+      document
+        .getElementById("searchForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          navigate(document.getElementById("searchInput").value);
+        });
+
+      document.querySelectorAll(".quick-link").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          navigate(el.dataset.url);
+        });
+      });
+
+      // Floating particles
+      var container = document.getElementById("particles");
+      for (var i = 0; i < 18; i++) {
+        (function (i) {
+          var p = document.createElement("span");
+          p.className = "particle";
+          p.style.left = Math.random() * 100 + "%";
+          p.style.bottom = Math.random() * 30 + "px";
+          p.style.setProperty("--dx", (Math.random() - 0.5) * 60 + "px");
+          p.style.animationDuration = 4 + Math.random() * 8 + "s";
+          p.style.animationDelay = Math.random() * 8 + "s";
+          p.style.width = p.style.height = 1 + Math.random() * 2 + "px";
+          container.appendChild(p);
+        })(i);
+      }
+
+      // Matrix rain
+      function startMatrix() {
+        var canvas = document.getElementById("matrixCanvas");
+        var ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        var ratio = Math.min(window.devicePixelRatio || 1, 2);
+        var fontSize = 17;
+        var columns = 0;
+        var drops = [];
+        var speeds = [];
+        var trails = [];
+        var chars =
+          "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF";
+        var accent =
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--accent")
+            .trim() || "#00ff88";
+        function resize() {
+          var width = window.innerWidth;
+          var height = window.innerHeight;
+          canvas.width = Math.floor(width * ratio);
+          canvas.height = Math.floor(height * ratio);
+          canvas.style.width = width + "px";
+          canvas.style.height = height + "px";
+          ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+          columns = Math.ceil(width / fontSize);
+          drops = [];
+          speeds = [];
+          trails = [];
+          for (var i = 0; i < columns; i++) {
+            drops[i] = (Math.random() * -height) / fontSize;
+            speeds[i] = 0.16 + Math.random() * 0.34;
+            trails[i] = 6 + Math.floor(Math.random() * 11);
+          }
+        }
+        resize();
+        window.addEventListener("resize", resize);
+        function draw() {
+          var width = window.innerWidth;
+          var height = window.innerHeight;
+          ctx.fillStyle = "rgba(0, 4, 2, 0.13)";
+          ctx.fillRect(0, 0, width, height);
+          ctx.font = "14px ui-monospace, SFMono-Regular, Menlo, monospace";
+          for (var i = 0; i < columns; i++) {
+            var head = drops[i] * fontSize;
+            var trail = trails[i];
+            for (var step = 0; step < trail; step++) {
+              var y = head - step * fontSize;
+              if (y < -fontSize || y > height + fontSize) continue;
+              var fade = 1 - step / trail;
+              ctx.fillStyle =
+                step === 0
+                  ? "rgba(222, 255, 232, 0.96)"
+                  : "rgba(0, " +
+                    Math.floor(150 + fade * 105) +
+                    ", " +
+                    Math.floor(45 + fade * 90) +
+                    ", " +
+                    fade * 0.78 +
+                    ")";
+              ctx.shadowColor = accent;
+              ctx.shadowBlur = step === 0 ? 9 : 2;
+              ctx.fillText(
+                chars[Math.floor(Math.random() * chars.length)],
+                i * fontSize,
+                y,
+              );
+            }
+            ctx.shadowBlur = 0;
+            if (head - trail * fontSize > height && Math.random() > 0.965)
+              drops[i] = Math.random() * -24;
+            drops[i] += speeds[i];
+          }
+          requestAnimationFrame(draw);
+        }
+        draw();
+      }
+    </script>
+  </body>
+</html>
