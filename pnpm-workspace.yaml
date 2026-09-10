@@ -12,6 +12,14 @@ allowBuilds:
   core-js: true
   esbuild: true
 
+overrides:
+  htmlparser2: 12.0.0
+
+patchedDependencies:
+  htmlparser2@12.0.0: patches/htmlparser2@12.0.0.patch
+  "@mercuryworkshop/wisp-js@0.4.1": patches/@mercuryworkshop__wisp-js@0.4.1.patch
+  "@mercuryworkshop/epoxy-transport@3.0.1": patches/@mercuryworkshop__epoxy-transport@3.0.1.patch
+
 catalog:
   "@mercuryworkshop/wisp-js": 0.4.1
   "@mercuryworkshop/proxy-transports": 1.0.2

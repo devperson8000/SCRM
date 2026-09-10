@@ -17,7 +17,7 @@
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.26.1",
   "engines": {
-    "node": ">=22.6.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "node --no-warnings=ExperimentalWarning devserver.ts",
@@ -26,16 +26,6 @@
     "vercel-build": "vite build --outDir vercel-static",
     "wisp-server": "node --no-warnings=ExperimentalWarning wisp-server.ts",
     "format": "prettier --write ."
-  },
-  "pnpm": {
-    "overrides": {
-      "htmlparser2": "12.0.0"
-    },
-    "patchedDependencies": {
-      "htmlparser2@12.0.0": "patches/htmlparser2@12.0.0.patch",
-      "@mercuryworkshop/wisp-js@0.4.1": "patches/@mercuryworkshop__wisp-js@0.4.1.patch",
-      "@mercuryworkshop/epoxy-transport@3.0.1": "patches/@mercuryworkshop__epoxy-transport@3.0.1.patch"
-    }
   },
   "devDependencies": {
     "@rsdoctor/rspack-plugin": "^1.4.0",
