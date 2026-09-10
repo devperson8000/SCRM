@@ -405,7 +405,136 @@
           transition: none;
         }
       }
-    </style>
+    
+      /* Premium access experience */
+      .access-gate {
+        isolation: isolate;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(0,255,136,.16), transparent 31%),
+          radial-gradient(circle at 86% 88%, rgba(36,119,255,.16), transparent 35%),
+          linear-gradient(145deg, #020706, #07110f 52%, #03080a);
+      }
+      .access-gate::before {
+        inset: 0;
+        opacity: .22;
+        background-image:
+          linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+        background-size: 48px 48px;
+        transform: none;
+        mask-image: radial-gradient(circle at center, #000, transparent 78%);
+      }
+      .access-gate::after {
+        position: absolute;
+        width: min(760px, 86vw);
+        aspect-ratio: 1;
+        border: 1px solid rgba(0,255,136,.07);
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 70px rgba(0,255,136,.018),
+          0 0 0 140px rgba(0,180,255,.014);
+        pointer-events: none;
+        animation: gate-orbit 18s linear infinite;
+        content: "";
+      }
+      @keyframes gate-orbit { to { transform: rotate(360deg); } }
+      .access-card {
+        gap: 22px;
+        width: min(440px, calc(100% - 32px));
+        padding: 42px;
+        overflow: hidden;
+        border-color: rgba(207,255,234,.14);
+        border-top-color: rgba(235,255,246,.32);
+        border-radius: 30px;
+        background: linear-gradient(145deg, rgba(15,31,28,.82), rgba(4,11,13,.68));
+        box-shadow:
+          0 44px 120px rgba(0,0,0,.62),
+          0 0 0 1px rgba(255,255,255,.025),
+          inset 0 1px rgba(255,255,255,.09);
+        backdrop-filter: blur(32px) saturate(155%);
+      }
+      .access-card::before {
+        position: absolute;
+        top: 0;
+        right: 12%;
+        left: 12%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #00ff88, transparent);
+        opacity: .7;
+        content: "";
+      }
+      .access-brand {
+        gap: 9px;
+        color: #8fffc5;
+        font-size: .67rem;
+        font-weight: 800;
+        letter-spacing: .18em;
+      }
+      .access-brand-mark {
+        width: 9px;
+        height: 9px;
+        background: #00ff88;
+        box-shadow: 0 0 0 5px rgba(0,255,136,.08), 0 0 24px rgba(0,255,136,.9);
+      }
+      .access-card h1 {
+        font-size: clamp(2.15rem, 7vw, 2.85rem);
+        font-weight: 820;
+        letter-spacing: -.065em;
+        background: linear-gradient(115deg, #fff 20%, #caffdf 62%, #66ffad);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .access-card p { color: #8fa69e; font-size: .88rem; }
+      .access-form { gap: 11px; margin-top: 2px; }
+      .access-form label {
+        color: #8fa79f;
+        font-size: .65rem;
+        font-weight: 760;
+        letter-spacing: .12em;
+      }
+      .access-input {
+        padding: 15px 16px;
+        border-color: rgba(217,255,239,.14);
+        border-top-color: rgba(235,255,246,.23);
+        border-radius: 15px;
+        background: linear-gradient(180deg, rgba(0,0,0,.3), rgba(255,255,255,.025));
+        box-shadow: inset 0 1px rgba(255,255,255,.035);
+      }
+      .access-input:hover { border-color: rgba(217,255,239,.24); }
+      .access-input:focus {
+        border-color: rgba(0,255,136,.58);
+        background: rgba(0,0,0,.35);
+        box-shadow: 0 0 0 4px rgba(0,255,136,.1), 0 12px 30px rgba(0,0,0,.18);
+      }
+      .access-submit {
+        padding: 14px 16px;
+        border-color: rgba(104,255,176,.7);
+        border-radius: 15px;
+        color: #031008;
+        background: linear-gradient(135deg, #aeffd3, #00e97d);
+        box-shadow: 0 12px 30px rgba(0,255,136,.17), inset 0 1px rgba(255,255,255,.55);
+        font-weight: 780;
+      }
+      .access-submit:hover {
+        color: #020b06;
+        background: linear-gradient(135deg, #c8ffdf, #1aff91);
+        box-shadow: 0 16px 36px rgba(0,255,136,.24);
+      }
+      .access-submit:disabled { cursor: wait; filter: saturate(.55); opacity: .7; }
+      .access-footnote {
+        padding-top: 3px;
+        color: #536a62 !important;
+        font-size: .68rem !important;
+        text-align: center;
+      }
+      @media (max-width: 520px) {
+        .access-card { padding: 34px 25px; border-radius: 25px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .access-gate::after { animation: none; }
+      }
+</style>
     <script type="module" src="/index.tsx"></script>
   </head>
   <body>
