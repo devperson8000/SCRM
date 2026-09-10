@@ -9,7 +9,7 @@ WORKDIR /app
 RUN corepack enable
 
 COPY . .
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 EXPOSE 4142
 
