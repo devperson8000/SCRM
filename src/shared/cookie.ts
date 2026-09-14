@@ -36,6 +36,27 @@ export class CookieJar {
     return requestPath.charAt(cookiePath.length) === "/";
   }
 
+  private domainMatches(hostname: string, cookieDomain: string): boolean {
+    const host = hostname.toLowerCase();
+    const domain = cookieDomain.toLowerCase().replace(/^\./, "");
+    return host === domain || host.endsWith(`.${domain}`);
+  }
+
+  private isSecureUrl(url: URL): boolean {
+    if (url.protocol === "https:") return true;
+    if (url.protocol !== "http:") return false;
+
+    // Browsers treat loopback origins as trustworthy for local development.
+    const hostname = url.hostname.toLowerCase();
+    return (
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname === "[::1]" ||
+      hostname === "::1" ||
+      /^127\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})$/.test(hostname)
+    );
+  }
+
   private indexCookie(c: Cookie) {
     const key = c.domain!.slice(1);
     let bucket = this.byDomain.get(key);
@@ -63,33 +84,53 @@ export class CookieJar {
 
   setCookies(cookieString: string, url: URL) {
     const parsedCookies = parse(cookieString);
+    const sourceHost = url.hostname.toLowerCase();
+    const secureOrigin = this.isSecureUrl(url);
 
     for (const parsedCookie of parsedCookies) {
       const lowerName = parsedCookie.name.toLowerCase();
+      const suppliedDomain = parsedCookie.domain
+        ?.trim()
+        .toLowerCase()
+        .replace(/^\./, "");
+      const sameSite = (parsedCookie.sameSite ?? "lax").toLowerCase();
+
+      // A Domain attribute can only widen a cookie to the response host's own
+      // parent domain. Without this check a proxied response could poison the
+      // virtual cookie jar for an unrelated site.
+      if (suppliedDomain && !this.domainMatches(sourceHost, suppliedDomain)) {
+        continue;
+      }
+
+      // Match modern browser cookie acceptance rules. Scramjet's outer page may
+      // itself be HTTPS, but cookie security is defined by the logical target
+      // URL, not by the proxy origin.
+      if (parsedCookie.secure && !secureOrigin) continue;
+      if (sameSite === "none" && !parsedCookie.secure) continue;
 
       if (lowerName.startsWith("__secure-")) {
-        if (!parsedCookie.secure) continue;
+        if (!parsedCookie.secure || !secureOrigin) continue;
       } else if (lowerName.startsWith("__host-")) {
-        if (!parsedCookie.secure) continue;
+        if (!parsedCookie.secure || !secureOrigin) continue;
         if (parsedCookie.domain) continue;
         if (parsedCookie.path !== "/") continue;
       }
 
-      const hostOnly = !parsedCookie.domain;
+      const hostOnly = !suppliedDomain;
       const expiresTime = parsedCookie.expires?.getTime();
       const expires = Number.isFinite(expiresTime) ? expiresTime : undefined;
       const cookie: Cookie = {
         ...parsedCookie,
+        domain: suppliedDomain || sourceHost,
         hostOnly,
+        sameSite,
         expires,
       };
 
-      if (!cookie.domain) cookie.domain = url.hostname;
-      if (!cookie.domain.startsWith(".")) cookie.domain = "." + cookie.domain;
+      if (!cookie.domain!.startsWith(".")) cookie.domain = "." + cookie.domain;
       if (!cookie.path || !cookie.path.startsWith("/")) {
         cookie.path = this.defaultPath(url);
       }
-      if (!cookie.sameSite) cookie.sameSite = "lax";
 
       const id = `${cookie.domain}@${cookie.path}@${cookie.name}`;
 
@@ -121,7 +162,7 @@ export class CookieJar {
     sameSiteContext: "strict" | "lax" | "cross-site" = "strict",
   ): string {
     const now = _Date.now();
-    const hostname = url.hostname;
+    const hostname = url.hostname.toLowerCase();
     const pathname = url.pathname;
     const validCookies: Cookie[] = [];
 
@@ -131,13 +172,10 @@ export class CookieJar {
       const bucket = this.byDomain.get(key);
       if (bucket) {
         for (const cookie of bucket) {
-          if (cookie.expires !== undefined && cookie.expires < now) continue;
+          if (cookie.expires !== undefined && cookie.expires <= now) continue;
 
           if (cookie.hostOnly && key !== hostname) continue;
-
-          // Scramjet proxies all origins as HTTPS (including those served over HTTP),
-          // so we don't enforce the Secure attribute based on protocol here.
-          // if (cookie.secure && url.protocol !== "https:") continue;
+          if (cookie.secure && !this.isSecureUrl(url)) continue;
           if (cookie.httpOnly && fromJs) continue;
           if (!this.pathMatches(pathname, cookie.path!)) continue;
 
@@ -159,6 +197,13 @@ export class CookieJar {
       const dot = key.indexOf(".");
       key = dot === -1 ? undefined : key.slice(dot + 1);
     }
+
+    // RFC cookie ordering prefers longer, more-specific paths before shorter
+    // ones. This matters when a site legitimately has duplicate cookie names on
+    // different paths.
+    validCookies.sort(
+      (a, b) => (b.path?.length ?? 0) - (a.path?.length ?? 0),
+    );
 
     return validCookies
       .map((cookie) =>
