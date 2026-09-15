@@ -15,6 +15,10 @@ import {
   LanguagePlugin,
 } from "@mercuryworkshop/scramjet-utils";
 import { connectionState, demoSettingsStore, sameOriginWispUrl } from "./store";
+import {
+  WISP_INIT_MAX_ATTEMPTS,
+  wispInitRetryDelayMs,
+} from "./connection-retry";
 
 // Captured before the interceptor further down replaces console.error, so the
 // recovery paths can report their own failures without the interceptor reading
@@ -350,7 +354,7 @@ async function resolveWispUrl(): Promise<string> {
       return demoSettingsStore.wispUrl;
     }
     // In production there's no same-origin /wisp/ to fall back to anymore
-    // (the wisp tunnel moved to a standalone Railway host) — silently
+    // (the wisp tunnel moved to a standalone Render host) — silently
     // falling back here used to hand the transport a URL that doesn't
     // exist, which just hangs forever instead of failing. Surface the
     // error so init()'s retry/backoff can react instead.
@@ -568,9 +572,6 @@ async function attemptInitOnce(interstitial: any) {
   interstitial.close();
 }
 
-const INIT_MAX_ATTEMPTS = 4;
-const INIT_BASE_DELAY_MS = 600;
-
 async function init() {
   const interstitial: any = (
     <LoadInterstitial status={"Loading"}></LoadInterstitial>
@@ -579,7 +580,7 @@ async function init() {
   interstitial.showModal();
 
   let lastError: unknown;
-  for (let attempt = 0; attempt < INIT_MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < WISP_INIT_MAX_ATTEMPTS; attempt++) {
     connectionState.status = attempt === 0 ? "connecting" : "reconnecting";
     connectionState.attempt = attempt;
     try {
@@ -590,18 +591,15 @@ async function init() {
     } catch (e) {
       lastError = e;
       console.warn(
-        `[scramjet] init attempt ${attempt + 1}/${INIT_MAX_ATTEMPTS} failed:`,
+        `[scramjet] init attempt ${attempt + 1}/${WISP_INIT_MAX_ATTEMPTS} failed:`,
         e,
       );
-      if (attempt < INIT_MAX_ATTEMPTS - 1) {
-        // Equal jitter: half the exponential delay is fixed, half is
-        // randomized. If the shared wisp server restarts, every connected
-        // browser hits this retry loop at roughly the same moment — pure
-        // exponential backoff would have them all retry in lockstep and
-        // hammer the server right as it comes back up.
-        const exponential = INIT_BASE_DELAY_MS * 2 ** attempt;
-        const delay = exponential / 2 + Math.random() * (exponential / 2);
-        interstitial.$.state.status = `Connection issue, retrying in ${Math.round(delay / 1000)}s...`;
+      if (attempt < WISP_INIT_MAX_ATTEMPTS - 1) {
+        // Render's free service can take roughly a minute to wake. Each pass
+        // reruns resolveWispUrl(), so it also obtains a fresh 60-second token
+        // instead of replaying one that expired during the cold start.
+        const delay = wispInitRetryDelayMs(attempt);
+        interstitial.$.state.status = `Waking the proxy server, retrying in ${Math.round(delay / 1000)}s...`;
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
