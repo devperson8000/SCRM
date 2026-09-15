@@ -30,10 +30,9 @@ Keep the first as `SESSION_SECRET` and the second as `WISP_SHARED_SECRET`.
 
 ## 2. Deploy the Wisp service
 
-Create a Node service from this repository on a persistent host. For Railway
-with an existing Vercel project, follow `RAILWAY_SETUP.md`. Railway detects the
-included Dockerfile and runs only the Wisp service. For Render, follow
-`RENDER_SETUP.md`.
+Create a Render Web Service from this repository. Follow `RENDER_SETUP.md` for
+the short Blueprint walkthrough. Render detects `render.yaml`, builds the
+included Dockerfile, and runs only the Wisp service.
 
 Set this environment variable on the Wisp service:
 

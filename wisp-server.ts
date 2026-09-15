@@ -1,4 +1,4 @@
-// Standalone always-on wisp tunnel server, meant to run on Railway (or any
+// Standalone wisp tunnel server, meant to run on Render (or any
 // persistent Node host) — NOT on Vercel. Wisp is a stateful, multiplexed
 // protocol: it needs one consistent long-lived process holding the
 // connection open for an entire browsing session, which serverless/edge
@@ -29,7 +29,7 @@
 //    stream_limit_per_host / stream_limit_total below, acting as a basic
 //    circuit breaker against resource exhaustion.
 //  - No HTTP keep-alive/header/request timeouts were set, no SIGTERM
-//    handling (Railway sends SIGTERM on every redeploy), and health was
+//    handling (managed hosts send SIGTERM during redeploys), and health was
 //    only a bare 200 OK with no diagnostics.
 
 import cluster from "node:cluster";
@@ -68,7 +68,7 @@ const SHUTDOWN_GRACE_MS = Number(process.env.WISP_SHUTDOWN_GRACE_MS) || 10_000;
 // faucet; the cap turns that into a bounded, self-healing burst.
 const UPGRADE_LIMIT_PER_MIN =
   Number(process.env.WISP_UPGRADE_LIMIT_PER_MIN) || 120;
-// Railway (and every other managed host) terminates TLS in front of us, so the
+// Render (and every other managed host) terminates TLS in front of us, so the
 // socket address is always the edge's. Opt out when exposing the port directly,
 // or x-forwarded-for becomes an attacker-controlled rate-limit bypass.
 const TRUST_PROXY = process.env.WISP_TRUST_PROXY !== "0";

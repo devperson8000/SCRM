@@ -92,11 +92,13 @@ until they exist:
 | ------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `SESSION_SECRET`         | both functions    | Any long random string. Signs the access cookie; unset means nobody can unlock the app, whatever the passcode is. |
 | `WISP_SHARED_SECRET`     | `api/wisp-config` | Must match the standalone wisp server (`wisp-server.ts`).                                                         |
-| `WISP_SERVER_PUBLIC_URL` | `api/wisp-config` | e.g. `wss://your-app.up.railway.app/wisp/`. Must be `wss://` (`ws://` is allowed only for localhost).             |
+| `WISP_SERVER_PUBLIC_URL` | `api/wisp-config` | e.g. `wss://your-service.onrender.com/wisp/`. Must be `wss://` (`ws://` is allowed only for localhost).           |
 
 `SESSION_SECRET` is deliberately not defaulted, and deliberately not committed:
 a generated per-instance key would sign sessions that stop verifying the moment
 Vercel starts another instance, which reads as a random, unreproducible logout.
+
+Deploy the persistent Wisp backend on Render by following `RENDER_SETUP.md`.
 
 #### Importing shared code from a function
 

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: scrm-wisp
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: WISP_SHARED_SECRET
+        sync: false
+      - key: WISP_TRUST_PROXY
+        value: "1"
