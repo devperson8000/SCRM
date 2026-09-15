@@ -1,4 +1,4 @@
-export const WISP_INIT_MAX_ATTEMPTS = 12;
+export const WISP_INIT_MAX_ATTEMPTS = 30;
 
 const WISP_INIT_BASE_DELAY_MS = 1_000;
 const WISP_INIT_MAX_DELAY_MS = 10_000;

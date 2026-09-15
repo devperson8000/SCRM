@@ -9,6 +9,16 @@ services:
     dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - Dockerfile
+        - render.yaml
+        - wisp-server.ts
+        - api/_lib/session.ts
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - patches/**
     envVars:
       - key: WISP_SHARED_SECRET
         sync: false

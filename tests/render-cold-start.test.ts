@@ -6,14 +6,14 @@ import {
   wispInitRetryDelayMs,
 } from "../connection-retry.ts";
 
-test("minimum retry window covers a one-minute Render cold start", () => {
+test("minimum retry window covers a slow three-minute Render deployment", () => {
   const minimumRetryWindowMs = Array.from(
     { length: WISP_INIT_MAX_ATTEMPTS - 1 },
     (_, attempt) => wispInitRetryDelayMs(attempt, 0),
   ).reduce((total, delay) => total + delay, 0);
 
   assert.ok(
-    minimumRetryWindowMs >= 60_000,
+    minimumRetryWindowMs >= 180_000,
     `minimum retry window was only ${minimumRetryWindowMs}ms`,
   );
 });
