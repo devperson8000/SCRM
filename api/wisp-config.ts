@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac } from "node:crypto";
+import { selectWispServerUrl } from "../wisp-pool.js";
 // ".js", not ".ts" -- see the note in api/access.ts. Vercel ships compiled
 // TypeScript renamed to .js without rewriting specifiers, so importing the
 // ".ts" path crashes the function at module load.
@@ -21,6 +22,12 @@ import {
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const WISP_SHARED_SECRET = process.env.WISP_SHARED_SECRET;
 const WISP_SERVER_PUBLIC_URL = process.env.WISP_SERVER_PUBLIC_URL;
+const WISP_SERVER_PUBLIC_URL_SECONDARY =
+  process.env.WISP_SERVER_PUBLIC_URL_SECONDARY;
+const WISP_SERVER_PUBLIC_URLS = [
+  WISP_SERVER_PUBLIC_URL,
+  WISP_SERVER_PUBLIC_URL_SECONDARY,
+].filter((url): url is string => Boolean(url));
 
 // Reported through the handler rather than thrown at cold start, for the same
 // reason as api/access.ts: a module-scope throw becomes an opaque 500 whose
@@ -45,12 +52,12 @@ const CONFIG_ERROR = ((): string | null => {
   }
   // A token minted against an http:// URL would be sent over a plaintext
   // WebSocket, exposing every proxied request.
-  if (
-    !/^wss:\/\//i.test(WISP_SERVER_PUBLIC_URL) &&
-    !/^ws:\/\/localhost/i.test(WISP_SERVER_PUBLIC_URL)
-  ) {
+  const invalidUrl = WISP_SERVER_PUBLIC_URLS.find(
+    (url) => !/^wss:\/\//i.test(url) && !/^ws:\/\/localhost/i.test(url),
+  );
+  if (invalidUrl) {
     return (
-      "Server misconfigured: WISP_SERVER_PUBLIC_URL must use wss:// " +
+      "Server misconfigured: every Wisp server URL must use wss:// " +
       "(ws:// is only allowed for localhost)."
     );
   }
@@ -113,7 +120,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   log("info", "wisp_token_issued", { address });
   res.status(200).json({
-    wispUrl: WISP_SERVER_PUBLIC_URL,
+    wispUrl: selectWispServerUrl(WISP_SERVER_PUBLIC_URLS, req.query.server),
     token: mintWispToken(),
   });
 }
