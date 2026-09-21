@@ -19,6 +19,7 @@ import {
   WISP_INIT_MAX_ATTEMPTS,
   wispInitRetryDelayMs,
 } from "./connection-retry";
+import { nextWispServerIndex } from "./wisp-pool";
 
 // Captured before the interceptor further down replaces console.error, so the
 // recovery paths can report their own failures without the interceptor reading
@@ -170,6 +171,12 @@ window.addEventListener("online", () => {
 let app = document.getElementById("app")!;
 
 const ACCESS_SESSION_KEY = "scramjet-access-session";
+const WISP_SERVER_INDEX_KEY = "scramjet-wisp-server-index";
+const selectedWispServerIndex = nextWispServerIndex(
+  localStorage.getItem(WISP_SERVER_INDEX_KEY),
+  2,
+);
+localStorage.setItem(WISP_SERVER_INDEX_KEY, String(selectedWispServerIndex));
 
 let controller: InstanceType<typeof Controller>;
 const cachePlugin = new HttpCachePlugin();
@@ -311,10 +318,13 @@ async function resolveWispUrl(): Promise<string> {
     return demoSettingsStore.wispUrl;
   }
   try {
-    const response = await fetch("/api/wisp-config", {
-      credentials: "same-origin",
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `/api/wisp-config?server=${selectedWispServerIndex}`,
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+      },
+    );
     if (!response.ok) {
       // Carry the server's own explanation up to init()'s error screen. A
       // bare "wisp-config 503" told the user only that a number came back;
