@@ -227,6 +227,16 @@ def stop(*_args: object) -> None:
     RUNNING = False
 
 
+def release_lease() -> None:
+    if not API_KEY:
+        return
+    try:
+        result = request("/api/mining/lease", None, method="DELETE")
+        emit("lease_released", released=bool(result.get("released", True)))
+    except Exception as error:
+        emit("lease_release_warning", message=str(error)[:240])
+
+
 def main() -> int:
     if not API_KEY:
         emit("fatal", message="KNX_API_KEY is not configured on this Northflank service")
@@ -292,4 +302,9 @@ def main() -> int:
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-    raise SystemExit(main())
+    exit_code = 0
+    try:
+        exit_code = main()
+    finally:
+        release_lease()
+    raise SystemExit(exit_code)
