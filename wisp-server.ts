@@ -35,8 +35,11 @@
 import cluster from "node:cluster";
 import http from "node:http";
 import os from "node:os";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type { Socket } from "node:net";
+import { fileURLToPath } from "node:url";
 import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import {
   FixedWindowRateLimiter,
@@ -160,6 +163,121 @@ function jsonResponse(res: http.ServerResponse, status: number, body: unknown) {
   res.end(payload);
 }
 
+// ---- cloud miner ---------------------------------------------------------
+// The SCRM UI never receives KNX_API_KEY or WISP_SHARED_SECRET. It calls the
+// authenticated Vercel /api/miner-control bridge, which signs a 60-second
+// control token with WISP_SHARED_SECRET. Only then can this process start or
+// stop its local miner child.
+const CLOUD_MINER_PATH = fileURLToPath(new URL("./cloud-miner.py", import.meta.url));
+const CLOUD_MINER_LOG_LIMIT = 240;
+let cloudMiner: ChildProcess | null = null;
+let cloudMinerStartedAt: string | null = null;
+let cloudMinerLastExit: { code: number | null; signal: string | null; at: string } | null = null;
+const cloudMinerLogs: string[] = [];
+
+function pushMinerLog(stream: "stdout" | "stderr", chunk: Buffer | string) {
+  const text = String(chunk);
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    cloudMinerLogs.push(`[${stream}] ${line}`);
+  }
+  if (cloudMinerLogs.length > CLOUD_MINER_LOG_LIMIT) {
+    cloudMinerLogs.splice(0, cloudMinerLogs.length - CLOUD_MINER_LOG_LIMIT);
+  }
+}
+
+function cloudMinerRunning(): boolean {
+  return Boolean(cloudMiner && cloudMiner.exitCode === null && !cloudMiner.killed);
+}
+
+function cloudMinerStatus() {
+  return {
+    running: cloudMinerRunning(),
+    configured: Boolean(process.env.KNX_API_KEY),
+    available: WORKERS === 1,
+    workers: WORKERS,
+    pid: cloudMinerRunning() ? cloudMiner?.pid ?? null : null,
+    startedAt: cloudMinerStartedAt,
+    lastExit: cloudMinerLastExit,
+    logs: cloudMinerLogs.slice(-100),
+    note:
+      WORKERS === 1
+        ? null
+        : "Cloud mining requires WISP_WORKERS=1 so one Northflank service cannot accidentally start duplicate miners.",
+  };
+}
+
+function startCloudMiner(): { ok: boolean; status: ReturnType<typeof cloudMinerStatus>; error?: string } {
+  if (WORKERS !== 1) {
+    return {
+      ok: false,
+      status: cloudMinerStatus(),
+      error: "Set WISP_WORKERS=1 on this Northflank service before using cloud mining.",
+    };
+  }
+  if (!process.env.KNX_API_KEY) {
+    return {
+      ok: false,
+      status: cloudMinerStatus(),
+      error: "KNX_API_KEY is not configured on this Northflank service.",
+    };
+  }
+  if (cloudMinerRunning()) {
+    return { ok: true, status: cloudMinerStatus() };
+  }
+
+  cloudMinerLogs.length = 0;
+  cloudMinerLastExit = null;
+  cloudMinerStartedAt = new Date().toISOString();
+
+  const child = spawn("python3", ["-u", CLOUD_MINER_PATH], {
+    env: { ...process.env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  cloudMiner = child;
+  child.stdout?.on("data", (chunk) => pushMinerLog("stdout", chunk));
+  child.stderr?.on("data", (chunk) => pushMinerLog("stderr", chunk));
+  child.on("error", (error) => {
+    pushMinerLog("stderr", `process error: ${String(error)}`);
+  });
+  child.on("exit", (code, signal) => {
+    cloudMinerLastExit = {
+      code,
+      signal,
+      at: new Date().toISOString(),
+    };
+    if (cloudMiner === child) cloudMiner = null;
+  });
+
+  log("info", "cloud_miner_started", { pid: child.pid });
+  return { ok: true, status: cloudMinerStatus() };
+}
+
+function stopCloudMiner(): ReturnType<typeof cloudMinerStatus> {
+  const child = cloudMiner;
+  if (!child || child.exitCode !== null) return cloudMinerStatus();
+
+  child.kill("SIGTERM");
+  const killTimer = setTimeout(() => {
+    if (child.exitCode === null) child.kill("SIGKILL");
+  }, 5_000);
+  killTimer.unref();
+  log("info", "cloud_miner_stop_requested", { pid: child.pid });
+
+  return cloudMinerStatus();
+}
+
+function controlToken(req: http.IncomingMessage): string | null {
+  const raw = req.headers["x-scrm-control-token"];
+  if (Array.isArray(raw)) return raw[0] ?? null;
+  return raw ?? null;
+}
+
+function isAuthorizedMinerControl(req: http.IncomingMessage): boolean {
+  return isValidToken(controlToken(req));
+}
+
 const server = http.createServer((req, res) => {
   const pathname = (req.url ?? "").split("?")[0];
   if (pathname === "/health" || pathname === "/healthz") {
@@ -175,9 +293,69 @@ const server = http.createServer((req, res) => {
       memoryRssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
       workers: WORKERS,
       pid: process.pid,
+      cloudMinerRunning: cloudMinerRunning(),
     });
     return;
   }
+
+  if (pathname.startsWith("/miner/")) {
+    if (!isAuthorizedMinerControl(req)) {
+      jsonResponse(res, 401, { error: "Unauthorized miner control request." });
+      return;
+    }
+
+    if (pathname === "/miner/status") {
+      if (req.method !== "GET") {
+        res.setHeader("Allow", "GET");
+        jsonResponse(res, 405, { error: "Method not allowed." });
+        return;
+      }
+      jsonResponse(res, 200, cloudMinerStatus());
+      return;
+    }
+
+    if (pathname === "/miner/source") {
+      if (req.method !== "GET") {
+        res.setHeader("Allow", "GET");
+        jsonResponse(res, 405, { error: "Method not allowed." });
+        return;
+      }
+      try {
+        jsonResponse(res, 200, {
+          source: readFileSync(CLOUD_MINER_PATH, "utf8"),
+          cloudExecutionUsesBundledSource: true,
+        });
+      } catch (error) {
+        jsonResponse(res, 500, { error: `Could not read miner source: ${String(error)}` });
+      }
+      return;
+    }
+
+    if (pathname === "/miner/start") {
+      if (req.method !== "POST") {
+        res.setHeader("Allow", "POST");
+        jsonResponse(res, 405, { error: "Method not allowed." });
+        return;
+      }
+      const result = startCloudMiner();
+      jsonResponse(res, result.ok ? 200 : 503, result);
+      return;
+    }
+
+    if (pathname === "/miner/stop") {
+      if (req.method !== "POST") {
+        res.setHeader("Allow", "POST");
+        jsonResponse(res, 405, { error: "Method not allowed." });
+        return;
+      }
+      jsonResponse(res, 200, { ok: true, status: stopCloudMiner() });
+      return;
+    }
+
+    jsonResponse(res, 404, { error: "Unknown miner endpoint." });
+    return;
+  }
+
   res.writeHead(200, {
     "Content-Type": "text/plain",
     "Cache-Control": "no-store",
@@ -341,6 +519,7 @@ process.on("unhandledRejection", (reason) => {
 function shutdown(signal: string) {
   if (draining) return;
   draining = true;
+  stopCloudMiner();
   log("info", "shutdown_start", { signal, openConnections: openSockets.size });
   // Stop accepting new connections immediately; let in-flight ones finish
   // naturally for a grace period instead of hard-killing every tunnel the
