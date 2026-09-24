@@ -137,6 +137,21 @@ function isValidToken(token: string | null): boolean {
   return constantTimeEquals(signature, expected);
 }
 
+function isValidMinerControlToken(token: string | null): boolean {
+  if (!token || token.length > 256) return false;
+  const match = /^(\d{13})\.([a-f0-9]{64})$/.exec(token);
+  if (!match) return false;
+  const [, timestampStr, signature] = match;
+  const timestamp = Number(timestampStr);
+  if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > 60_000) {
+    return false;
+  }
+  const expected = createHmac("sha256", WISP_SHARED_SECRET!)
+    .update(`miner:${timestampStr}`)
+    .digest("hex");
+  return constantTimeEquals(signature, expected);
+}
+
 // ---- connection tracking (health checks + graceful shutdown) -------------
 const openSockets = new Set<Socket>();
 let totalConnectionsServed = 0;
@@ -275,7 +290,7 @@ function controlToken(req: http.IncomingMessage): string | null {
 }
 
 function isAuthorizedMinerControl(req: http.IncomingMessage): boolean {
-  return isValidToken(controlToken(req));
+  return isValidMinerControlToken(controlToken(req));
 }
 
 const server = http.createServer((req, res) => {
