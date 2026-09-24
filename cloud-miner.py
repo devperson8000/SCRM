@@ -13,6 +13,7 @@ import json
 import os
 import random
 import signal
+import ssl
 import struct
 import time
 import urllib.error
@@ -29,6 +30,8 @@ HTTP_TIMEOUT_SECONDS = max(3.0, float(os.getenv("KNX_HTTP_TIMEOUT_SECONDS", "20"
 HASH_CHECK_INTERVAL = max(1024, int(os.getenv("KNX_HASH_CHECK_INTERVAL", "8192")))
 HASH_THROTTLE_SECONDS = max(0.0, float(os.getenv("KNX_HASH_THROTTLE_MS", "1")) / 1000.0)
 USER_AGENT = "scrm-cloud-miner/1.0"
+CA_BUNDLE = os.getenv("SSL_CERT_FILE", "/etc/ssl/certs/ca-certificates.crt")
+SSL_CONTEXT = ssl.create_default_context(cafile=CA_BUNDLE if os.path.exists(CA_BUNDLE) else None)
 RUNNING = True
 
 
@@ -84,7 +87,7 @@ def request(path: str, payload: dict | None = None, *, method: str = "POST") -> 
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(NODE_URL + path, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECONDS) as response:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECONDS, context=SSL_CONTEXT) as response:
             raw = response.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as error:
