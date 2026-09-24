@@ -175,10 +175,11 @@ const MinerView: Component<
     slot: 0 | 1,
     title: string,
     subtitle: string,
-    statusValue: any,
-    actionValue: any,
   ) =>
-    use(statusValue, actionValue).map(([status, busy]: [CloudMinerStatus, boolean]) => (
+    (slot === 0
+      ? use(this.miner0, this.action0)
+      : use(this.miner1, this.action1)
+    ).map(([status, busy]: [CloudMinerStatus, boolean]) => (
       <article class={`cloud-card ${status.running ? "running" : ""}`}>
         <div class="cloud-card-head">
           <div>
@@ -294,8 +295,8 @@ const MinerView: Component<
       )}
 
       <div class="cloud-grid">
-        {cloudCard(0, "SCRM-WISP", "Primary Northflank transport + miner", this.miner0, this.action0)}
-        {cloudCard(1, "SCRM-WISP-2", "Secondary Northflank transport + miner", this.miner1, this.action1)}
+        {cloudCard(0, "SCRM-WISP", "Primary Northflank transport + miner")}
+        {cloudCard(1, "SCRM-WISP-2", "Secondary Northflank transport + miner")}
       </div>
 
       <section class="editor-card">
