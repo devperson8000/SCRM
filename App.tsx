@@ -7,6 +7,7 @@ import RequestViewer from "./pages/RequestViewer";
 import PlaygroundView from "./pages/Playground";
 import SettingsView from "./pages/SettingsPage";
 import Dashboard from "./pages/Dashboard";
+import MinerView from "./pages/Miner";
 import {
   BrowserTabStrip,
   Omnibox,
@@ -19,7 +20,7 @@ import { requestsState } from "./pages/RequestViewer";
 import { browserSessionState } from "./store";
 import { cachePlugin, controller } from "./index";
 
-type TabId = "browser" | "dashboard" | "requests" | "playground" | "settings";
+type TabId = "browser" | "dashboard" | "requests" | "playground" | "miner" | "settings";
 
 const APP_TABS: Array<{
   id: TabId;
@@ -30,6 +31,7 @@ const APP_TABS: Array<{
   { id: "dashboard", label: "Overview", icon: "◫" },
   { id: "requests", label: "Traffic", icon: "↗" },
   { id: "playground", label: "Lab", icon: "⌘" },
+  { id: "miner", label: "Miner", icon: "◈" },
   { id: "settings", label: "Settings", icon: "◇" },
 ];
 
@@ -252,6 +254,13 @@ const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
             <PlaygroundView
               active={use(this.activeTab).map((tab) => tab === "playground")}
             />
+          </div>
+          <div
+            class={use(this.activeTab).map(
+              (tab) => `tab-panel ${tab === "miner" ? "active" : ""}`,
+            )}
+          >
+            <MinerView />
           </div>
           <div
             class={use(this.activeTab).map(
