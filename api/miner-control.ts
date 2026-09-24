@@ -41,7 +41,7 @@ function publicHttpOrigin(wispUrl: string): string {
 function mintControlToken(): string {
   const timestamp = Date.now().toString();
   const signature = createHmac("sha256", WISP_SHARED_SECRET!)
-    .update(timestamp)
+    .update(`miner:${timestamp}`)
     .digest("hex");
   return `${timestamp}.${signature}`;
 }
