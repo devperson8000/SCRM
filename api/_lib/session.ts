@@ -39,7 +39,7 @@ export const ACCESS_COOKIE = "scramjet_access_v3";
  * To read it:   printf %s 'MTIzNDU2' | base64 -d
  * To change it: printf %s 'new-passcode' | base64
  */
-const ENCODED_PASSCODE = "bWl0Y2hfaXNfZ29hdGVkMTIzNA==";
+const ENCODED_PASSCODE = "bWl0Y2gzMCE=";
 
 /**
  * Hardcoded, and deliberately not overridable from the environment. Reading it
