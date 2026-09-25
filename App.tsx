@@ -2,12 +2,12 @@ import { css, type Component } from "dreamland/core";
 import FlagEditor from "./components/FlagEditor";
 import MatrixRain from "./components/MatrixRain";
 import ConnectionStatus from "./components/ConnectionStatus";
+import BookmarkletMenu from "./components/BookmarkletMenu";
 import BrowserView from "./pages/BrowserView";
 import RequestViewer from "./pages/RequestViewer";
 import PlaygroundView from "./pages/Playground";
 import SettingsView from "./pages/SettingsPage";
 import Dashboard from "./pages/Dashboard";
-import MinerView from "./pages/Miner";
 import {
   BrowserTabStrip,
   Omnibox,
@@ -15,12 +15,13 @@ import {
   browserState,
   closeBrowserTab,
   openBrowserTab,
+  runBookmarkletInActiveTab,
 } from "./pages/BrowserView";
 import { requestsState } from "./pages/RequestViewer";
 import { browserSessionState } from "./store";
 import { cachePlugin, controller } from "./index";
 
-type TabId = "browser" | "dashboard" | "requests" | "playground" | "miner" | "settings";
+type TabId = "browser" | "dashboard" | "requests" | "playground" | "settings";
 
 const APP_TABS: Array<{
   id: TabId;
@@ -31,7 +32,6 @@ const APP_TABS: Array<{
   { id: "dashboard", label: "Overview", icon: "◫" },
   { id: "requests", label: "Traffic", icon: "↗" },
   { id: "playground", label: "Lab", icon: "⌘" },
-  { id: "miner", label: "Miner", icon: "◈" },
   { id: "settings", label: "Settings", icon: "◇" },
 ];
 
@@ -189,6 +189,7 @@ const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
               .andThen(<Omnibox />)}
             <div class="top-actions">
               <ConnectionStatus />
+              <BookmarkletMenu onRun={runBookmarkletInActiveTab} />
               <button
                 type="button"
                 class={use(browserSessionState.incognito).map(
@@ -257,13 +258,6 @@ const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
           </div>
           <div
             class={use(this.activeTab).map(
-              (tab) => `tab-panel ${tab === "miner" ? "active" : ""}`,
-            )}
-          >
-            <MinerView />
-          </div>
-          <div
-            class={use(this.activeTab).map(
               (tab) => `tab-panel ${tab === "settings" ? "active" : ""}`,
             )}
           >
@@ -294,21 +288,30 @@ App.style = css`
     overflow: hidden;
     color: var(--text-1);
     background:
-      radial-gradient(circle at 8% -10%, var(--accent-dim, rgba(0,255,136,.13)), transparent 34%),
-      radial-gradient(circle at 92% 115%, rgba(41, 121, 255, .12), transparent 38%),
+      radial-gradient(
+        circle at 8% -10%,
+        var(--accent-dim, rgba(0, 255, 136, 0.13)),
+        transparent 34%
+      ),
+      radial-gradient(
+        circle at 92% 115%,
+        rgba(41, 121, 255, 0.12),
+        transparent 38%
+      ),
       linear-gradient(145deg, #030706 0%, #06100f 48%, #030809 100%);
-    font-family: Inter, "SF Pro Display", "Segoe UI Variable", "Segoe UI", sans-serif;
+    font-family:
+      Inter, "SF Pro Display", "Segoe UI Variable", "Segoe UI", sans-serif;
     isolation: isolate;
   }
   :scope::before {
     position: fixed;
     inset: 0;
     z-index: 0;
-    opacity: .2;
+    opacity: 0.2;
     pointer-events: none;
     background-image:
-      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
     background-size: 48px 48px;
     mask-image: linear-gradient(to bottom, #000, transparent 82%);
     content: "";
@@ -341,10 +344,14 @@ App.style = css`
     min-height: 46px;
     flex-shrink: 0;
     border-bottom: 1px solid var(--line);
-    background: linear-gradient(180deg, rgba(13,25,23,.94), rgba(5,11,12,.94));
+    background: linear-gradient(
+      180deg,
+      rgba(13, 25, 23, 0.94),
+      rgba(5, 11, 12, 0.94)
+    );
     box-shadow:
-      0 14px 38px rgba(0,0,0,.34),
-      inset 0 1px rgba(255,255,255,.06);
+      0 14px 38px rgba(0, 0, 0, 0.34),
+      inset 0 1px rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(26px) saturate(155%);
   }
   .top-bar::after {
@@ -354,7 +361,12 @@ App.style = css`
     left: 0;
     height: 1px;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, var(--accent-border, rgba(0,255,136,.38)), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--accent-border, rgba(0, 255, 136, 0.38)),
+      transparent
+    );
     content: "";
   }
   .brand {
@@ -373,15 +385,15 @@ App.style = css`
   }
   .brand strong {
     color: #f5fff9;
-    font-size: .84rem;
+    font-size: 0.84rem;
     font-weight: 760;
-    letter-spacing: -.015em;
+    letter-spacing: -0.015em;
   }
   .brand small {
     color: var(--accent-text, #70ffb7);
-    font-size: .49rem;
+    font-size: 0.49rem;
     font-weight: 800;
-    letter-spacing: .16em;
+    letter-spacing: 0.16em;
   }
   .brand-mark {
     position: relative;
@@ -390,19 +402,27 @@ App.style = css`
     height: 29px;
     place-items: center;
     overflow: hidden;
-    border: 1px solid var(--accent-border, rgba(0,255,136,.42));
+    border: 1px solid var(--accent-border, rgba(0, 255, 136, 0.42));
     border-radius: 9px;
     color: #eafff3;
-    background:
-      linear-gradient(145deg, var(--accent-dim, rgba(0,255,136,.2)), rgba(255,255,255,.035));
+    background: linear-gradient(
+      145deg,
+      var(--accent-dim, rgba(0, 255, 136, 0.2)),
+      rgba(255, 255, 255, 0.035)
+    );
     box-shadow:
-      0 0 24px var(--accent-glow, rgba(0,255,136,.18)),
-      inset 0 1px rgba(255,255,255,.16);
+      0 0 24px var(--accent-glow, rgba(0, 255, 136, 0.18)),
+      inset 0 1px rgba(255, 255, 255, 0.16);
   }
   .brand-mark::after {
     position: absolute;
     inset: -40%;
-    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.34), transparent 65%);
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.34),
+      transparent 65%
+    );
     transform: translateX(-60%) rotate(8deg);
     animation: brand-sheen 6s ease-in-out infinite;
     content: "";
@@ -413,8 +433,13 @@ App.style = css`
     font-weight: 900;
   }
   @keyframes brand-sheen {
-    0%, 70% { transform: translateX(-65%) rotate(8deg); }
-    100% { transform: translateX(65%) rotate(8deg); }
+    0%,
+    70% {
+      transform: translateX(-65%) rotate(8deg);
+    }
+    100% {
+      transform: translateX(65%) rotate(8deg);
+    }
   }
   .tab-bar {
     display: flex;
@@ -435,24 +460,32 @@ App.style = css`
     background: transparent;
     cursor: pointer;
     font: inherit;
-    font-size: .78rem;
+    font-size: 0.78rem;
     font-weight: 640;
     white-space: nowrap;
-    transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+    transition:
+      color 160ms ease,
+      background 160ms ease,
+      border-color 160ms ease,
+      transform 160ms ease;
   }
   .tab-button:hover {
-    border-color: rgba(255,255,255,.075);
+    border-color: rgba(255, 255, 255, 0.075);
     color: #eafff5;
-    background: rgba(255,255,255,.055);
+    background: rgba(255, 255, 255, 0.055);
     transform: translateY(-1px);
   }
   .tab-button.active {
-    border-color: var(--accent-border, rgba(0,255,136,.28));
+    border-color: var(--accent-border, rgba(0, 255, 136, 0.28));
     color: #f4fff9;
-    background: linear-gradient(145deg, var(--accent-dim, rgba(0,255,136,.16)), rgba(255,255,255,.035));
+    background: linear-gradient(
+      145deg,
+      var(--accent-dim, rgba(0, 255, 136, 0.16)),
+      rgba(255, 255, 255, 0.035)
+    );
     box-shadow:
-      0 8px 24px rgba(0,0,0,.2),
-      inset 0 1px rgba(255,255,255,.08);
+      0 8px 24px rgba(0, 0, 0, 0.2),
+      inset 0 1px rgba(255, 255, 255, 0.08);
   }
   .tab-button.active::after {
     position: absolute;
@@ -462,7 +495,7 @@ App.style = css`
     height: 2px;
     border-radius: 999px;
     background: var(--accent, #00ff88);
-    box-shadow: 0 0 12px var(--accent-glow, rgba(0,255,136,.48));
+    box-shadow: 0 0 12px var(--accent-glow, rgba(0, 255, 136, 0.48));
     content: "";
   }
   .tab-button .ui-icon {
@@ -474,15 +507,17 @@ App.style = css`
     font-weight: 700;
     line-height: 1;
   }
-  .tab-button.active .ui-icon { color: var(--accent-text, #70ffb7); }
+  .tab-button.active .ui-icon {
+    color: var(--accent-text, #70ffb7);
+  }
   .tab-count {
     min-width: 18px;
     padding: 2px 5px;
-    border: 1px solid var(--accent-border, rgba(0,255,136,.25));
+    border: 1px solid var(--accent-border, rgba(0, 255, 136, 0.25));
     border-radius: 999px;
     color: var(--accent-text, #70ffb7);
-    background: var(--accent-dim, rgba(0,255,136,.12));
-    font-size: .59rem;
+    background: var(--accent-dim, rgba(0, 255, 136, 0.12));
+    font-size: 0.59rem;
     font-variant-numeric: tabular-nums;
     text-align: center;
   }
@@ -498,24 +533,30 @@ App.style = css`
     align-items: center;
     gap: 6px;
     padding: 6px 10px;
-    border: 1px solid rgba(255,255,255,.11);
+    border: 1px solid rgba(255, 255, 255, 0.11);
     border-radius: 999px;
     color: #91a59e;
-    background: rgba(255,255,255,.035);
+    background: rgba(255, 255, 255, 0.035);
     cursor: pointer;
     font: inherit;
-    font-size: .68rem;
+    font-size: 0.68rem;
     font-weight: 650;
-    transition: color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    transition:
+      color 160ms ease,
+      background 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
   }
   .mode-button:hover,
   .mode-button.active {
-    border-color: var(--accent-border, rgba(0,255,136,.4));
+    border-color: var(--accent-border, rgba(0, 255, 136, 0.4));
     color: var(--accent-text, #70ffb7);
-    background: var(--accent-dim, rgba(0,255,136,.13));
-    box-shadow: 0 0 18px var(--accent-glow, rgba(0,255,136,.12));
+    background: var(--accent-dim, rgba(0, 255, 136, 0.13));
+    box-shadow: 0 0 18px var(--accent-glow, rgba(0, 255, 136, 0.12));
   }
-  .mode-button .material-symbols-outlined { font-size: 14px !important; }
+  .mode-button .material-symbols-outlined {
+    font-size: 14px !important;
+  }
   .mode-toast {
     position: fixed;
     top: 54px;
@@ -523,13 +564,15 @@ App.style = css`
     z-index: 20;
     transform: translateX(-50%);
     padding: 9px 14px;
-    border: 1px solid var(--accent-border, rgba(0,255,136,.4));
+    border: 1px solid var(--accent-border, rgba(0, 255, 136, 0.4));
     border-radius: 999px;
     color: var(--accent-text, #70ffb7);
-    background: rgba(5,14,13,.94);
-    box-shadow: 0 16px 42px rgba(0,0,0,.4), inset 0 1px rgba(255,255,255,.08);
+    background: rgba(5, 14, 13, 0.94);
+    box-shadow:
+      0 16px 42px rgba(0, 0, 0, 0.4),
+      inset 0 1px rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
-    font-size: .72rem;
+    font-size: 0.72rem;
     font-weight: 650;
   }
   .tab-panel {
@@ -540,31 +583,59 @@ App.style = css`
   }
   .tab-panel.active {
     display: flex;
-    animation: tab-panel-in 220ms cubic-bezier(.2,.8,.2,1);
+    animation: tab-panel-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   @keyframes tab-panel-in {
-    from { opacity: 0; transform: translateY(5px) scale(.998); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+      opacity: 0;
+      transform: translateY(5px) scale(0.998);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
   button:focus-visible {
     outline: 2px solid var(--accent, #00ff88);
     outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
-    .tab-panel.active, .brand-mark::after { animation: none; }
+    .tab-panel.active,
+    .brand-mark::after {
+      animation: none;
+    }
   }
   @media (max-width: 1080px) {
-    .brand { min-width: auto; }
-    .tab-label { display: none; }
-    .tab-button { padding-inline: 10px; }
+    .brand {
+      min-width: auto;
+    }
+    .tab-label {
+      display: none;
+    }
+    .tab-button {
+      padding-inline: 10px;
+    }
   }
   @media (max-width: 760px) {
-    .brand { padding-inline: 8px; border-right: 0; }
-    .brand-copy, .mode-button span:last-child { display: none; }
-    .tab-bar { padding-inline: 2px; }
-    .tab-button { padding-inline: 7px; }
-    .top-actions { gap: 3px; padding-right: 5px; }
+    .brand {
+      padding-inline: 8px;
+      border-right: 0;
+    }
+    .brand-copy,
+    .mode-button span:last-child {
+      display: none;
+    }
+    .tab-bar {
+      padding-inline: 2px;
+    }
+    .tab-button {
+      padding-inline: 7px;
+    }
+    .top-actions {
+      gap: 3px;
+      padding-right: 5px;
+    }
   }
-`
+`;
 
 export default App;

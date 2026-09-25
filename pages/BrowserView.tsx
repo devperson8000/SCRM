@@ -8,6 +8,7 @@ import {
 import { versionInfo } from "@mercuryworkshop/scramjet";
 import { cachePlugin, controller, languagePlugin } from "../index";
 import { demoSettingsStore } from "../store";
+import { runBookmarklet } from "../bookmarklets";
 import homepage from "./homepage.html?raw";
 import type { Frame } from "@mercuryworkshop/scramjet-controller";
 
@@ -128,6 +129,14 @@ export function closeBrowserTab(id: string) {
 
 export function openBrowserTab(url?: string) {
   createBrowserTab?.(url);
+}
+
+export function runBookmarkletInActiveTab(code: string) {
+  const tab = getActiveBrowserTab();
+  if (!tab) throw new Error("Open a browser tab before running a bookmarklet.");
+  const target = tab.element.contentWindow;
+  if (!target) throw new Error("The active tab is not ready yet.");
+  runBookmarklet(target, code);
 }
 
 export function navigateBrowserTab(rawUrl: string) {
