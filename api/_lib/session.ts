@@ -36,10 +36,10 @@ export const ACCESS_COOKIE = "scramjet_access_v3";
  * substitute for SESSION_SECRET, which is the actual security boundary and is
  * never committed.
  *
- * To read it:   printf %s 'MTIzNDU2' | base64 -d
+ * To read it:   printf %s 'bWl0Y2gzMCE=' | base64 -d
  * To change it: printf %s 'new-passcode' | base64
  */
-const ENCODED_PASSCODE = "MTIzNDU2";
+const ENCODED_PASSCODE = "bWl0Y2gzMCE=";
 
 /**
  * Hardcoded, and deliberately not overridable from the environment. Reading it

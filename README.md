@@ -60,13 +60,13 @@ passcode applies everywhere — local, preview and production — because it is
 hardcoded in `api/_lib/session.ts`, base64-encoded rather than spelled out:
 
 ```ts
-const ENCODED_PASSCODE = "MTIzNDU2";
+const ENCODED_PASSCODE = "bWl0Y2gzMCE=";
 export const ACCESS_PASSWORD_HASH = sha256Hex(
   Buffer.from(ENCODED_PASSCODE, "base64").toString("utf8"),
 );
 ```
 
-Read it with `printf %s 'MTIzNDU2' | base64 -d`; change it by replacing that
+Read it with `printf %s 'bWl0Y2gzMCE=' | base64 -d`; change it by replacing that
 literal with `printf %s 'new-passcode' | base64`. The encoding is obfuscation,
 not secrecy — it keeps the passcode from being readable at a glance or by
 grepping the tree, and nothing more. The plaintext also remains in this
