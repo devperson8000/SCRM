@@ -339,6 +339,13 @@ App.style = css`
   }
   .top-bar {
     position: relative;
+    /*
+     * backdrop-filter creates a stacking context. Keep the entire browser
+     * chrome above BrowserView's fixed iframe layer so popovers (notably the
+     * bookmarklet menu) can extend over the page instead of being painted
+     * underneath it.
+     */
+    z-index: 100;
     display: flex;
     align-items: stretch;
     min-height: 46px;
