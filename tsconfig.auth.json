@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": [
+    "api/_lib/auth-*.ts",
+    "api/_lib/face.ts",
+    "auth/**/*.ts",
+    "scripts/auth-*.ts",
+    "scripts/build-auth.ts"
+  ]
+}

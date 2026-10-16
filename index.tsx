@@ -1,5 +1,6 @@
 import LoadInterstitial from "./components/LoadInterstitial";
 import App from "./App";
+import { showLogin } from "./auth/login";
 import { attachQuickExit } from "./quick-exit";
 // Type-only: the transport implementations are loaded on demand in
 // getTransport(). Only ever one of the two is used in a session — the choice is
@@ -171,7 +172,6 @@ window.addEventListener("online", () => {
 
 let app = document.getElementById("app")!;
 
-const ACCESS_SESSION_KEY = "scramjet-access-session";
 const WISP_SERVER_INDEX_KEY = "scramjet-wisp-server-index";
 const selectedWispServerIndex = nextWispServerIndex(
   localStorage.getItem(WISP_SERVER_INDEX_KEY),
@@ -182,131 +182,6 @@ localStorage.setItem(WISP_SERVER_INDEX_KEY, String(selectedWispServerIndex));
 let controller: InstanceType<typeof Controller>;
 const cachePlugin = new HttpCachePlugin();
 const languagePlugin = new LanguagePlugin();
-
-async function showAccessGate(): Promise<void> {
-  // sessionStorage is isolated per tab: reloads remain unlocked, while
-  // opening the proxy in a new tab/window starts at the gate again.
-  if (sessionStorage.getItem(ACCESS_SESSION_KEY) === "granted") {
-    const status = await fetch("/api/access", {
-      credentials: "same-origin",
-      cache: "no-store",
-    }).catch(() => null);
-    const access = status
-      ? ((await status.json().catch(() => null)) as {
-          unlocked?: boolean;
-        } | null)
-      : null;
-    if (status?.ok && access?.unlocked) return;
-    sessionStorage.removeItem(ACCESS_SESSION_KEY);
-  }
-
-  app.innerHTML = "";
-  const gate = document.createElement("main");
-  gate.className = "access-gate";
-  gate.setAttribute("role", "main");
-
-  const card = document.createElement("section");
-  card.className = "access-card";
-  card.setAttribute("aria-labelledby", "access-title");
-
-  const brand = document.createElement("div");
-  brand.className = "access-brand";
-  const mark = document.createElement("span");
-  mark.className = "access-brand-mark";
-  mark.setAttribute("aria-hidden", "true");
-  brand.append(mark, document.createTextNode("Secure workspace"));
-
-  const title = document.createElement("h1");
-  title.id = "access-title";
-  title.textContent = "Private access";
-
-  const description = document.createElement("p");
-  description.textContent =
-    "Enter the workspace passcode to continue. Your session stays local to this browser.";
-
-  const form = document.createElement("form");
-  form.className = "access-form";
-  const label = document.createElement("label");
-  label.htmlFor = "access-password";
-  label.textContent = "Workspace passcode";
-  const input = document.createElement("input");
-  input.id = "access-password";
-  input.className = "access-input";
-  input.type = "password";
-  input.autocomplete = "off";
-  input.spellcheck = false;
-  input.maxLength = 64;
-  input.required = true;
-  input.placeholder = "Enter passcode";
-  const submit = document.createElement("button");
-  submit.className = "access-submit";
-  submit.type = "submit";
-  submit.textContent = "Unlock workspace";
-  const message = document.createElement("div");
-  message.className = "access-message";
-  message.setAttribute("role", "status");
-  message.setAttribute("aria-live", "polite");
-  const footnote = document.createElement("p");
-  footnote.className = "access-footnote";
-  footnote.textContent =
-    "Protected session · No credentials are stored in the page.";
-
-  form.append(label, input, submit, message);
-  card.append(brand, title, description, form, footnote);
-  gate.append(card);
-  app.append(gate);
-  input.focus();
-
-  await new Promise<void>((resolve) => {
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!input.value || submit.disabled) return;
-      submit.disabled = true;
-      submit.textContent = "Checking access…";
-      message.textContent = "";
-      try {
-        const response = await fetch("/api/access", {
-          method: "POST",
-          credentials: "same-origin",
-          cache: "no-store",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: input.value }),
-        });
-        if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          // Only a 401 is actually a wrong passcode. Reporting every failed
-          // response as one is how a misconfigured deployment came to look
-          // like a forgotten password: a Vercel Function that throws at cold
-          // start (a missing SESSION_SECRET does exactly that) answers 500
-          // with an HTML body, so the .json() above yields null and the old
-          // fallback text blamed the passcode — sending people to hunt for a
-          // credential that was correct all along.
-          message.textContent =
-            body?.error ||
-            (response.status === 401
-              ? "Access denied. Check the passcode."
-              : `The access service failed (HTTP ${response.status}). ` +
-                "That's a server problem, not your passcode.");
-          input.select();
-          submit.disabled = false;
-          submit.textContent = "Unlock workspace";
-          return;
-        }
-        input.value = "";
-        sessionStorage.setItem(ACCESS_SESSION_KEY, "granted");
-        gate.remove();
-        resolve();
-      } catch {
-        message.textContent =
-          "The access service is unavailable. Try again shortly.";
-        submit.disabled = false;
-        submit.textContent = "Unlock workspace";
-      }
-    });
-  });
-}
 
 // If the user has manually overridden the wisp URL in Settings, honor it
 // verbatim (this is how local dev / self-hosted wisp servers keep working).
@@ -671,7 +546,7 @@ async function mount() {
 }
 
 async function start() {
-  await showAccessGate();
+  await showLogin(app);
   await init();
   await mount();
 }

@@ -30,3 +30,9 @@ test("Wisp runtime changes still deploy to Render", () => {
   assert.equal(renderBuildDecision("wisp-server.ts"), true);
   assert.equal(renderBuildDecision("api/_lib/session.ts"), true);
 });
+
+test("face authentication runtime changes restart the Wisp service", () => {
+  assert.equal(renderBuildDecision("api/_lib/auth-service.ts"), true);
+  assert.equal(renderBuildDecision("api/_lib/auth-wisp.ts"), true);
+  assert.equal(renderBuildDecision("api/_lib/face-models.json"), true);
+});

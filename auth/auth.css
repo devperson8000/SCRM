@@ -1,0 +1,126 @@
+.face-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #080d12;
+  color: #edf5fa;
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+.face-card {
+  width: min(100%, 520px);
+  padding: 30px;
+  border: 1px solid #263846;
+  border-radius: 20px;
+  background: #101c26;
+  box-shadow: 0 20px 80px #0006;
+}
+.face-card h1 {
+  font-size: 28px;
+  margin: 0 0 12px;
+}
+.face-card p {
+  margin: 12px 0;
+}
+.face-card form {
+  display: grid;
+  gap: 12px;
+}
+.face-card input:not([type="checkbox"]),
+.face-admin textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #526879;
+  border-radius: 8px;
+  background: #09131d;
+  color: #fff;
+  font: inherit;
+}
+.face-button {
+  padding: 11px 16px;
+  margin: 8px 8px 0 0;
+  border: 1px solid #547282;
+  border-radius: 9px;
+  background: #153b3b;
+  color: #f4fffc;
+  cursor: pointer;
+  font: inherit;
+}
+.face-button:hover {
+  background: #245858;
+}
+.face-button:focus-visible,
+.face-card input:focus-visible {
+  outline: 3px solid #7dfac1;
+  outline-offset: 3px;
+}
+.face-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.face-note {
+  font-size: 12px;
+  color: #b3c0c9;
+}
+.face-status {
+  min-height: 24px;
+  white-space: pre-wrap;
+  color: #ffe5ac;
+}
+.face-video {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #000;
+}
+.face-prompt {
+  font-size: 20px;
+  font-weight: 700;
+}
+.face-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+}
+.face-consent input {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.face-admin {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 32px max(20px, calc((100vw - 1000px) / 2));
+  background: #080d12;
+  color: #edf5fa;
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+.face-admin h1 {
+  font-size: 30px;
+}
+.face-user,
+.face-recovery {
+  border: 1px solid #324955;
+  border-radius: 12px;
+  margin: 16px 0;
+  padding: 20px;
+  overflow-wrap: anywhere;
+}
+.face-user h2 {
+  font-size: 20px;
+  margin: 0;
+}
+.face-recovery {
+  background: #172a29;
+}
+.face-actions {
+  display: flex;
+  flex-wrap: wrap;
+}

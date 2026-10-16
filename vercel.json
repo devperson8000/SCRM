@@ -1,14 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "pnpm exec vite build --outDir vercel-static",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm auth:build && pnpm exec vite build --outDir vercel-static",
+  "installCommand": "pnpm install --frozen-lockfile && pnpm auth:build",
   "outputDirectory": "vercel-static",
   "functions": {
     "api/access.ts": {
-      "maxDuration": 10
+      "maxDuration": 60,
+      "includeFiles": [
+        "api/_lib/face-models.json",
+        "node_modules/@vladmandic/face-api/model/**",
+        "node_modules/@tensorflow/tfjs-backend-wasm/dist/*.wasm"
+      ]
     },
     "api/wisp-config.ts": {
+      "maxDuration": 10
+    },
+    "api/admin.ts": {
       "maxDuration": 10
     }
   },
@@ -16,14 +24,26 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "no-referrer" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=(), payment=()"
+          "value": "camera=(self), microphone=(), geolocation=(), payment=()"
         },
-        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
       ]
     },
     {

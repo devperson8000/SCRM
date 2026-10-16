@@ -20,6 +20,7 @@ import {
 import { requestsState } from "./pages/RequestViewer";
 import { browserSessionState } from "./store";
 import { cachePlugin, controller } from "./index";
+import { authRequest } from "./auth/client";
 
 type TabId = "browser" | "dashboard" | "requests" | "playground" | "settings";
 
@@ -188,6 +189,22 @@ const App: Component<{}, {}, { activeTab: TabId; modeMessage: string }> =
               .map((tab) => tab === "browser")
               .andThen(<Omnibox />)}
             <div class="top-actions">
+              <button
+                type="button"
+                class="mode-button"
+                on:click={async () => {
+                  try {
+                    await authRequest("logout");
+                    sessionStorage.removeItem("scramjet-access-session");
+                    window.location.reload();
+                  } catch {
+                    this.modeMessage =
+                      "Could not lock the workspace. Try again.";
+                  }
+                }}
+              >
+                Lock workspace
+              </button>
               <ConnectionStatus />
               <BookmarkletMenu onRun={runBookmarkletInActiveTab} />
               <button

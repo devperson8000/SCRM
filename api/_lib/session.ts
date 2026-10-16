@@ -24,34 +24,6 @@ import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
  */
 export const ACCESS_COOKIE = "scramjet_access_v3";
 
-/**
- * The passcode, base64 rather than plaintext, so a glance at this file (or a
- * `grep` across the tree) doesn't hand it over.
- *
- * Be clear-eyed about what that is worth: base64 is an encoding, not a cipher.
- * Anyone holding the source can decode it in one command, and the plaintext is
- * still in this repository's git history. It raises the effort of reading the
- * passcode off a screen from zero to nearly zero — which is the right amount
- * for a gate whose job is to keep the casual visitor out of a demo, and no
- * substitute for SESSION_SECRET, which is the actual security boundary and is
- * never committed.
- *
- * To read it:   printf %s 'MTIzNDU2' | base64 -d
- * To change it: printf %s 'new-passcode' | base64
- */
-const ENCODED_PASSCODE = "bWl0Y2gzMCE=";
-
-/**
- * Hardcoded, and deliberately not overridable from the environment. Reading it
- * from ACCESS_PASSWORD/ACCESS_PASSWORD_SHA256 bought nothing and cost real
- * failures: a value left behind in a deploy platform's project settings
- * silently rejected the documented passcode, and nothing on screen (or in the
- * repo) could explain why.
- */
-export const ACCESS_PASSWORD_HASH = sha256Hex(
-  Buffer.from(ENCODED_PASSCODE, "base64").toString("utf8"),
-);
-
 /** Server-side lifetime of an issued session token. */
 export const SESSION_TTL_MS = clampNumber(
   process.env.SESSION_TTL_MS,
@@ -128,14 +100,6 @@ export function verifyAccessToken(
   const expiresAt = Number(payload.slice(0, payload.indexOf(".")));
 
   return Number.isFinite(expiresAt) && expiresAt > now;
-}
-
-export function verifyPassword(password: string): boolean {
-  // Hashing an unbounded string is unbounded work; the gate only ever accepts
-  // short passphrases.
-  if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) return false;
-
-  return constantTimeEquals(sha256Hex(password), ACCESS_PASSWORD_HASH);
 }
 
 export function readCookie(
@@ -462,7 +426,7 @@ export function createLogger(service: string) {
 export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+  "Permissions-Policy": "camera=(self), microphone=(), geolocation=(), payment=()",
   "Cross-Origin-Resource-Policy": "same-origin",
   "X-Frame-Options": "SAMEORIGIN",
 };

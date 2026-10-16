@@ -1,23 +1,26 @@
 import { createServer } from "vite";
+import {
+  accessHandler,
+  adminHandler,
+  getAuthService,
+  authCookies,
+} from "./api/_lib/auth-http.ts";
+import {
+  watchAuthorizedSocket,
+  startAuthMaintenance,
+} from "./api/_lib/auth-wisp.ts";
 import fs from "node:fs/promises";
 import chalk from "chalk";
 import { execFileSync } from "node:child_process";
 import http from "node:http";
 import type { Socket } from "node:net";
-import { randomBytes } from "node:crypto";
 import rspackConfig from "./rspack.config.ts";
 import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 import {
-  BodyReadError,
   FixedWindowRateLimiter,
   SECURITY_HEADERS,
-  buildSetCookie,
   clientAddress,
   createLogger,
-  hasValidAccessCookie,
-  issueAccessToken,
-  readJsonBody,
-  verifyPassword,
 } from "./api/_lib/session.ts";
 import {
   black,
@@ -70,14 +73,6 @@ const startedAt = Date.now();
 
 // A per-boot random key silently invalidates open sessions on every restart.
 // That's tolerable in dev, but it should not be a mystery when it happens.
-const signingKey =
-  process.env.SESSION_SECRET || randomBytes(32).toString("hex");
-if (!process.env.SESSION_SECRET) {
-  log("warn", "session_secret_missing", {
-    detail: "using an ephemeral key; unlocks reset on every restart",
-  });
-}
-
 // Behind Replit's edge the socket address is the proxy's, so x-forwarded-for is
 // the only real client identity. Directly exposed, that same header is
 // attacker-controlled and would let anyone mint a fresh rate-limit bucket per
@@ -85,11 +80,6 @@ if (!process.env.SESSION_SECRET) {
 const TRUST_PROXY =
   process.env.TRUST_PROXY === "1" || Boolean(process.env.REPLIT_DEV_DOMAIN);
 
-const accessLimiter = new FixedWindowRateLimiter({
-  limit: 5,
-  windowMs: 5 * 60_000,
-  maxEntries: 5_000,
-});
 const upgradeLimiter = new FixedWindowRateLimiter({
   limit: 120,
   windowMs: 60_000,
@@ -112,15 +102,6 @@ function sendJson(
     ...headers,
   });
   response.end(payload);
-}
-
-function secureCookie(request: http.IncomingMessage) {
-  const forwardedProtocol = String(request.headers["x-forwarded-proto"] || "");
-  const secure =
-    forwardedProtocol === "https" || Boolean(process.env.REPLIT_DEV_DOMAIN);
-
-  // No Max-Age/Expires on purpose: this is a browser-session cookie.
-  return buildSetCookie(issueAccessToken(signingKey), secure);
 }
 
 // A wisp URL is only pinned when the operator names one (or when Replit hands
@@ -214,6 +195,14 @@ const accessMiddleware = async (
   // Matching on the raw url meant "/api/access?x=1" missed both branches and
   // fell through to Vite's SPA fallback, which answers 200 with index.html.
   const pathname = (request.url ?? "").split("?")[0];
+  if (pathname === "/api/access") {
+    await accessHandler(request, response);
+    return;
+  }
+  if (pathname === "/api/admin") {
+    await adminHandler(request, response);
+    return;
+  }
 
   // Parity with the production tunnel's /health, so one probe works against
   // either environment.
@@ -252,7 +241,16 @@ const accessMiddleware = async (
       return;
     }
 
-    if (!hasValidAccessCookie(signingKey, request.headers)) {
+    let authorized = false;
+    try {
+      authorized = Boolean(
+        await getAuthService().getSession(
+          authCookies(request.headers).session,
+          "user",
+        ),
+      );
+    } catch {}
+    if (!authorized) {
       sendJson(response, 401, { error: "Unlock the workspace first." });
 
       return;
@@ -298,73 +296,6 @@ const accessMiddleware = async (
 
     return;
   }
-
-  if (request.method === "GET") {
-    sendJson(response, 200, {
-      unlocked: hasValidAccessCookie(signingKey, request.headers),
-    });
-
-    return;
-  }
-
-  if (request.method !== "POST") {
-    sendJson(
-      response,
-      405,
-      { error: "Method not allowed." },
-      { Allow: "GET, POST" },
-    );
-
-    return;
-  }
-
-  const address = clientAddress(
-    request.headers,
-    request.socket.remoteAddress,
-    TRUST_PROXY,
-  );
-  const limit = accessLimiter.check(address);
-  if (!limit.allowed) {
-    sendJson(
-      response,
-      429,
-      { error: "Too many attempts. Try again shortly." },
-      { "Retry-After": String(limit.retryAfterSeconds) },
-    );
-
-    return;
-  }
-
-  try {
-    const body = await readJsonBody<{ password?: unknown }>(request);
-    const password = typeof body?.password === "string" ? body.password : "";
-    if (!verifyPassword(password)) {
-      const remaining = accessLimiter.record(address).remaining;
-      log("warn", "access_denied", { address, remaining });
-      sendJson(response, 401, { error: "Access denied." });
-
-      return;
-    }
-
-    accessLimiter.reset(address);
-    log("info", "access_granted", { address });
-    sendJson(
-      response,
-      200,
-      { unlocked: true },
-      { "Set-Cookie": secureCookie(request) },
-    );
-  } catch (error) {
-    const status = error instanceof BodyReadError ? error.status : 400;
-    // Connection: close because the request body was left unread; Node
-    // must not try to reuse this connection for a follow-up request.
-    sendJson(
-      response,
-      status,
-      { error: "Invalid access request." },
-      { Connection: "close" },
-    );
-  }
 };
 
 // Vite's SPA fallback is installed during createServer(). Put the access
@@ -385,7 +316,7 @@ await server.listen();
 
 // Attach Wisp WebSocket handler to the Vite HTTP server on /wisp/ path.
 // This lets the browser reach it via the same public port (5000).
-server.httpServer?.on("upgrade", (req, rawSocket, head) => {
+server.httpServer?.on("upgrade", async (req, rawSocket, head) => {
   // Anything else on this port is Vite's own HMR socket — leave it alone.
   // Logged first, and for every upgrade: when the browser reports that it
   // "cannot reach the wisp server", the single most valuable fact is whether
@@ -395,7 +326,7 @@ server.httpServer?.on("upgrade", (req, rawSocket, head) => {
   // recorded because a tunnel that rewrites them is exactly how the browser
   // ends up aiming at an address that was never this server.
   log("info", "upgrade_request", {
-    url: req.url,
+    url: req.url?.startsWith("/wisp/") ? "/wisp/[redacted]/" : req.url,
     wisp: req.url?.startsWith("/wisp/") ?? false,
     host: req.headers.host,
     origin: req.headers.origin,
@@ -439,9 +370,17 @@ server.httpServer?.on("upgrade", (req, rawSocket, head) => {
   // wisp-server.ts: metering only the rejections leaves the limiter unable to
   // bound anything a valid credential can do.
   upgradeLimiter.record(address);
-  if (!hasValidAccessCookie(signingKey, req.headers)) {
-    return reject("401 Unauthorized", "no_access_cookie");
-  }
+  let session;
+  try {
+    session = await getAuthService().getSession(
+      authCookies(req.headers).session,
+      "user",
+    );
+  } catch {}
+  if (!session) return reject("401 Unauthorized", "no_approved_face_session");
+  watchAuthorizedSocket(socket, () =>
+    getAuthService().activeUserSession(session!.id),
+  );
 
   wispConnections++;
   totalWispConnections++;
@@ -527,3 +466,9 @@ if (image) {
 }
 
 // runRspack(rspackConfig); // using pre-built release dist files
+
+try {
+  startAuthMaintenance(getAuthService());
+} catch {
+  /* Missing configuration remains fail-closed. */
+}

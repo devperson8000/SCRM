@@ -1,3 +1,9 @@
+import { getAuthService } from "./api/_lib/auth-service.ts";
+import { readWisp } from "./api/_lib/auth-crypto.ts";
+import {
+  watchAuthorizedSocket,
+  startAuthMaintenance,
+} from "./api/_lib/auth-wisp.ts";
 // Standalone wisp tunnel server, meant to run on Render (or any
 // persistent Node host) — NOT on Vercel. Wisp is a stateful, multiplexed
 // protocol: it needs one consistent long-lived process holding the
@@ -117,33 +123,16 @@ wisp.options.dns_ttl = DNS_TTL_MS;
 const log = createLogger("wisp-server");
 
 // ---- token auth ----------------------------------------------------------
-function isValidToken(token: string | null): boolean {
-  // Bound the work an unauthenticated client can make us do: HMAC over an
-  // arbitrarily long path segment is free CPU burn for the attacker.
-  if (!token || token.length > 256) return false;
-  const match = /^(\d{13})\.([a-f0-9]{64})$/.exec(token);
-  if (!match) return false;
-  const [, timestampStr, signature] = match;
-
-  const timestamp = Number(timestampStr);
-  if (!Number.isFinite(timestamp)) return false;
-  // Tokens are minted on-demand right before connecting and are only
-  // meant to authorize that one connection attempt.
-  if (Math.abs(Date.now() - timestamp) > 60_000) return false;
-
-  const expected = createHmac("sha256", WISP_SHARED_SECRET!)
-    .update(timestampStr)
-    .digest("hex");
-  return constantTimeEquals(signature, expected);
-}
-
 function isValidMinerControlToken(token: string | null): boolean {
   if (!token || token.length > 256) return false;
   const match = /^(\d{13})\.([a-f0-9]{64})$/.exec(token);
   if (!match) return false;
   const [, timestampStr, signature] = match;
   const timestamp = Number(timestampStr);
-  if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > 60_000) {
+  if (
+    !Number.isFinite(timestamp) ||
+    Math.abs(Date.now() - timestamp) > 60_000
+  ) {
     return false;
   }
   const expected = createHmac("sha256", WISP_SHARED_SECRET!)
@@ -183,11 +172,17 @@ function jsonResponse(res: http.ServerResponse, status: number, body: unknown) {
 // authenticated Vercel /api/miner-control bridge, which signs a 60-second
 // control token with WISP_SHARED_SECRET. Only then can this process start or
 // stop its local miner child.
-const CLOUD_MINER_PATH = fileURLToPath(new URL("./cloud-miner.py", import.meta.url));
+const CLOUD_MINER_PATH = fileURLToPath(
+  new URL("./cloud-miner.py", import.meta.url),
+);
 const CLOUD_MINER_LOG_LIMIT = 240;
 let cloudMiner: ChildProcess | null = null;
 let cloudMinerStartedAt: string | null = null;
-let cloudMinerLastExit: { code: number | null; signal: string | null; at: string } | null = null;
+let cloudMinerLastExit: {
+  code: number | null;
+  signal: string | null;
+  at: string;
+} | null = null;
 const cloudMinerLogs: string[] = [];
 
 function pushMinerLog(stream: "stdout" | "stderr", chunk: Buffer | string) {
@@ -203,7 +198,9 @@ function pushMinerLog(stream: "stdout" | "stderr", chunk: Buffer | string) {
 }
 
 function cloudMinerRunning(): boolean {
-  return Boolean(cloudMiner && cloudMiner.exitCode === null && !cloudMiner.killed);
+  return Boolean(
+    cloudMiner && cloudMiner.exitCode === null && !cloudMiner.killed,
+  );
 }
 
 function cloudMinerStatus() {
@@ -212,7 +209,7 @@ function cloudMinerStatus() {
     configured: Boolean(process.env.KNX_API_KEY),
     available: WORKERS === 1,
     workers: WORKERS,
-    pid: cloudMinerRunning() ? cloudMiner?.pid ?? null : null,
+    pid: cloudMinerRunning() ? (cloudMiner?.pid ?? null) : null,
     startedAt: cloudMinerStartedAt,
     lastExit: cloudMinerLastExit,
     logs: cloudMinerLogs.slice(-100),
@@ -223,12 +220,17 @@ function cloudMinerStatus() {
   };
 }
 
-function startCloudMiner(): { ok: boolean; status: ReturnType<typeof cloudMinerStatus>; error?: string } {
+function startCloudMiner(): {
+  ok: boolean;
+  status: ReturnType<typeof cloudMinerStatus>;
+  error?: string;
+} {
   if (WORKERS !== 1) {
     return {
       ok: false,
       status: cloudMinerStatus(),
-      error: "Set WISP_WORKERS=1 on this Northflank service before using cloud mining.",
+      error:
+        "Set WISP_WORKERS=1 on this Northflank service before using cloud mining.",
     };
   }
   if (!process.env.KNX_API_KEY) {
@@ -341,7 +343,9 @@ const server = http.createServer((req, res) => {
           cloudExecutionUsesBundledSource: true,
         });
       } catch (error) {
-        jsonResponse(res, 500, { error: `Could not read miner source: ${String(error)}` });
+        jsonResponse(res, 500, {
+          error: `Could not read miner source: ${String(error)}`,
+        });
       }
       return;
     }
@@ -418,7 +422,7 @@ server.on("clientError", (error, socket) => {
   }
 });
 
-server.on("upgrade", (req, rawSocket, head) => {
+server.on("upgrade", async (req, rawSocket, head) => {
   // http.Server's "upgrade" event types the socket as a bare stream.Duplex,
   // but for an HTTP server it is always a real net.Socket at runtime.
   const socket = rawSocket as Socket;
@@ -447,7 +451,11 @@ server.on("upgrade", (req, rawSocket, head) => {
   const address = clientAddress(req.headers, socket.remoteAddress, TRUST_PROXY);
   const reject = (status: string, reason: string) => {
     totalUpgradesRejected++;
-    log("warn", "upgrade_rejected", { reason, url: req.url, address });
+    log("warn", "upgrade_rejected", {
+      reason,
+      url: req.url?.startsWith("/wisp/") ? "/wisp/[redacted]/" : req.url,
+      address,
+    });
     if (socket.writable) {
       // end(), not write()-then-destroy(): destroy() tears the socket down
       // without waiting for the write to flush, so the client could see a
@@ -484,9 +492,17 @@ server.on("upgrade", (req, rawSocket, head) => {
   // wss://host/wisp/<token>/
   const rest = req.url.slice("/wisp/".length);
   const token = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  if (!isValidToken(token)) {
-    return reject("401 Unauthorized", "bad_token");
+  const sessionId = readWisp(token, WISP_SHARED_SECRET!);
+  if (!sessionId) return reject("401 Unauthorized", "bad_token");
+  try {
+    if (!(await getAuthService().activeUserSession(sessionId)))
+      return reject("401 Unauthorized", "revoked_session");
+  } catch {
+    return reject("503 Service Unavailable", "auth_unavailable");
   }
+  watchAuthorizedSocket(socket, () =>
+    getAuthService().activeUserSession(sessionId),
+  );
 
   // Normalize the URL back to the bare wisp path before handing off — the
   // token segment is our auth concern, not the wisp library's.
@@ -631,4 +647,10 @@ if (IS_CLUSTER_PRIMARY) {
   }
 } else {
   listen();
+}
+
+try {
+  startAuthMaintenance(getAuthService());
+} catch {
+  /* Missing configuration remains fail-closed. */
 }
