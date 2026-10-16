@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scramjet — Face Recognition Test</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#123e35 0%,#071214 55%,#040909 100%);color:#e8fff5;display:grid;place-items:center;padding:24px}
+main{width:min(680px,100%);border:1px solid #284c43;border-radius:22px;background:#0b181b;padding:28px;box-shadow:0 20px 70px #0007}
+h1{margin:0 0 8px;font-size:clamp(24px,4vw,32px)}p{color:#b2c9c1;line-height:1.5}small{color:#90a9a1}
+.pill{display:inline-block;background:#153c32;color:#a3f3cc;border-radius:99px;padding:6px 10px;font-size:12px;margin-bottom:14px}
+video{width:100%;background:#030707;aspect-ratio:4/3;object-fit:cover;border:1px solid #2e554a;border-radius:16px;transform:scaleX(-1)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}button{border:1px solid #497c68;background:#153e32;color:#e6fff2;border-radius:12px;padding:12px 16px;font:600 14px inherit;cursor:pointer}button.primary{background:#23bb78;color:#062017;border-color:#23bb78}button:disabled{cursor:not-allowed;opacity:.45}
+#status{margin-top:14px;border:1px solid #31574b;border-radius:12px;padding:14px;background:#10271f;min-height:54px;line-height:1.5}
+#status.error{background:#321d20;border-color:#75434b;color:#ffc9d1}#status.ok{background:#123629;border-color:#2a7652;color:#aef6c7}
+footer{font-size:12px;color:#8caaa0;margin-top:18px;line-height:1.5}a{color:#92edc3}
+</style></head><body><main>
+<div class="pill">TEST BRANCH · DEMO ONLY</div>
+<h1>Try face recognition</h1>
+<p>No passwords, database or backend configuration required. Allow camera access, save a reference scan, then scan again to see if it matches.</p>
+<video id="video" autoplay playsinline muted aria-label="Live camera preview"></video>
+<div class="controls">
+<button id="camera" class="primary">1. Start camera</button>
+<button id="enroll" disabled>2. Save my face</button>
+<button id="verify" disabled>3. Recognise me</button>
+<button id="reset" disabled>Reset</button>
+</div>
+<div id="status" role="status" aria-live="polite">Camera is off. Start the camera to begin.</div>
+<footer>This is a local, in-browser accuracy demo — <strong>not a login or a security check</strong>. Face data stays in this tab's memory and is discarded on refresh or reset. The full authenticated face-login branch still needs its database and server configuration. Only scan people who agree to participate. <a href="/">Return to Scramjet</a>.</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js"></script>
+<script>
+const modelURL="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model";
+const video=document.getElementById("video"),status=document.getElementById("status");
+const camera=document.getElementById("camera"),enroll=document.getElementById("enroll"),verify=document.getElementById("verify"),reset=document.getElementById("reset");
+let stream=null,descriptor=null,ready=false,busy=false;
+function message(text,type=""){status.textContent=text;status.className=type;}
+function buttons(){camera.disabled=busy||!!stream;enroll.disabled=busy||!stream||!ready;verify.disabled=busy||!stream||!ready||!descriptor;reset.disabled=busy||(!stream&&!descriptor);}
+async function loadModels(){if(ready)return; if(!window.faceapi)throw Error("Recognition library could not load. Check your internet connection.");message("Loading recognition models (first time may take a moment)…");await Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri(modelURL),faceapi.nets.faceLandmark68Net.loadFromUri(modelURL),faceapi.nets.faceRecognitionNet.loadFromUri(modelURL)]);ready=true;}
+async function capture(){if(!stream||video.readyState<2)throw Error("Camera is not ready yet.");const detection=await faceapi.detectSingleFace(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:.5})).withFaceLandmarks().withFaceDescriptor();if(!detection)throw Error("No face detected. Face the camera with good lighting and try again.");return detection.descriptor;}
+async function work(fn){if(busy)return;busy=true;buttons();try{await fn()}catch(e){message(e.message||"Something went wrong.", "error")}finally{busy=false;buttons()}}
+camera.onclick=()=>work(async()=>{if(!navigator.mediaDevices?.getUserMedia)throw Error("Camera unavailable. Open this page using HTTPS.");stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});video.srcObject=stream;await video.play();await loadModels();message("Camera ready. Look at the camera and save your face.");});
+enroll.onclick=()=>work(async()=>{message("Analysing reference scan…");descriptor=Float32Array.from(await capture());message("Face saved for this tab only. Change your angle slightly, then press ‘Recognise me’.","ok");});
+verify.onclick=()=>work(async()=>{message("Comparing your face to the saved scan…");const current=await capture();const distance=faceapi.euclideanDistance(descriptor,current);const matched=distance<=.48;message((matched?"Match found! ✓":"No match — try a better-lit scan or reset.")+" Similarity distance: "+distance.toFixed(3)+" (test threshold 0.480).",matched?"ok":"error");});
+reset.onclick=()=>{if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;descriptor=null;message("Cleared. No face data was stored.");buttons();};buttons();
+window.addEventListener("pagehide",()=>{if(stream)stream.getTracks().forEach(t=>t.stop());descriptor=null;});
+</script></body></html>

@@ -580,6 +580,7 @@ const BrowserView: Component<
       const element = document.createElement("iframe");
       element.className = "browser-frame";
       element.title = "Scramjet browser tab";
+      element.allow = "camera 'none'; microphone 'none'; geolocation 'none'";
       element.style.position = "fixed";
       element.style.top = "81px";
       element.style.right = "0";

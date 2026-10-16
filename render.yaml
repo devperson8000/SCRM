@@ -15,6 +15,9 @@ services:
         - render.yaml
         - wisp-server.ts
         - api/_lib/session.ts
+        - api/_lib/auth-*.ts
+        - api/_lib/face.ts
+        - api/_lib/face-models.json
         - package.json
         - pnpm-lock.yaml
         - pnpm-workspace.yaml

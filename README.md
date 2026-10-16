@@ -53,52 +53,20 @@ pnpm dev
 
 The demo page for scramjet should now be running at <http://localhost:4141> and should rebuild upon a file being changed (excluding the rewriter).
 
-### Access passcode
+### Face-login test branch
 
-Both the dev server and the deployed app sit behind a passcode gate. The same
-passcode applies everywhere — local, preview and production — because it is
-hardcoded in `api/_lib/session.ts`, base64-encoded rather than spelled out:
-
-```ts
-const ENCODED_PASSCODE = "MTIzNDU2";
-export const ACCESS_PASSWORD_HASH = sha256Hex(
-  Buffer.from(ENCODED_PASSCODE, "base64").toString("utf8"),
-);
-```
-
-Read it with `printf %s 'MTIzNDU2' | base64 -d`; change it by replacing that
-literal with `printf %s 'new-passcode' | base64`. The encoding is obfuscation,
-not secrecy — it keeps the passcode from being readable at a glance or by
-grepping the tree, and nothing more. The plaintext also remains in this
-repository's git history.
-
-No environment variable can change it. `ACCESS_PASSWORD` and
-`ACCESS_PASSWORD_SHA256` are no longer read at all, so a stale value sitting in
-a deploy platform's project settings can't lock you out of your own deployment
-— which is exactly what used to happen, invisibly.
-
-The gate's actual security boundary is `SESSION_SECRET`, which is a real secret
-and is not committed.
+This branch uses password plus server-verified face matching, administrator
+approval, and PostgreSQL instead of the previous source-controlled passcode.
+Follow [FACE_AUTH_SETUP.md](FACE_AUTH_SETUP.md) for the local launcher, one-time
+admin setup, test workflow, and preview deployment settings. Do not deploy this
+branch over production without completing those steps and real-camera checks.
 
 ### Deploying to Vercel
 
-Vercel runs the static build plus the two functions in `api/`. The passcode
-needs no configuration; these are secrets and must be set in the project
-settings (Settings → Environment Variables) before the first deploy, because
-the functions that need them answer `503` with the missing variable named
-until they exist:
-
-| Variable                 | Required by       | Notes                                                                                                             |
-| ------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `SESSION_SECRET`         | both functions    | Any long random string. Signs the access cookie; unset means nobody can unlock the app, whatever the passcode is. |
-| `WISP_SHARED_SECRET`     | `api/wisp-config` | Must match the standalone wisp server (`wisp-server.ts`).                                                         |
-| `WISP_SERVER_PUBLIC_URL` | `api/wisp-config` | e.g. `wss://your-service.onrender.com/wisp/`. Must be `wss://` (`ws://` is allowed only for localhost).           |
-
-`SESSION_SECRET` is deliberately not defaulted, and deliberately not committed:
-a generated per-instance key would sign sessions that stop verifying the moment
-Vercel starts another instance, which reads as a random, unreproducible logout.
-
-Deploy the persistent Wisp backend on Render by following `RENDER_SETUP.md`.
+Follow the preview instructions in [FACE_AUTH_SETUP.md](FACE_AUTH_SETUP.md).
+The build must run `pnpm auth:build` before Vite to bundle the server runtime.
+The new `api/admin.ts` route requires a current admin session. Keep the preview
+and its Wisp backend on a separate test database and branch.
 
 #### Importing shared code from a function
 

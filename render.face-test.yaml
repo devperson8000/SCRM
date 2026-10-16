@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: scrm-face-test-wisp
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: test/face-login
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - Dockerfile
+        - render.yaml
+        - wisp-server.ts
+        - api/_lib/session.ts
+        - api/_lib/auth-*.ts
+        - api/_lib/face.ts
+        - api/_lib/face-models.json
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - patches/**
+    envVars:
+      - key: WISP_SHARED_SECRET
+        sync: false
+      - key: WISP_TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_ORIGIN
+        sync: false
+      - key: ACCESS_PASSWORD_HASH
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: ADMIN_SETUP_TOKEN_HASH
+        sync: false
+      - key: FACE_TEMPLATE_KEY
+        sync: false
+      - key: SESSION_SECRET
+        sync: false

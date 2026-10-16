@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createHmac } from "node:crypto";
+import { getAuthService, authCookies, signWisp } from "./_lib/auth-runtime.js";
 import { selectWispServerUrl } from "../wisp-pool.js";
 // ".js", not ".ts" -- see the note in api/access.ts. Vercel ships compiled
 // TypeScript renamed to .js without rewriting specifiers, so importing the
@@ -9,7 +9,6 @@ import {
   SECURITY_HEADERS,
   clientAddress,
   createLogger,
-  hasValidAccessCookie,
 } from "./_lib/session.js";
 
 // Mints a short-lived token authorizing the browser to connect directly to
@@ -75,15 +74,7 @@ const tokenLimiter = new FixedWindowRateLimiter({
   maxEntries: 5_000,
 });
 
-function mintWispToken(): string {
-  const timestamp = Date.now().toString();
-  const signature = createHmac("sha256", WISP_SHARED_SECRET!)
-    .update(timestamp)
-    .digest("hex");
-  return `${timestamp}.${signature}`;
-}
-
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
     res.setHeader(header, value);
   }
@@ -104,7 +95,14 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  if (!hasValidAccessCookie(SESSION_SECRET!, req.headers)) {
+  let session;
+  try {
+    session = await getAuthService().getSession(
+      authCookies(req.headers).session,
+      "user",
+    );
+  } catch {}
+  if (!session) {
     res.status(401).json({ error: "Unlock the workspace first." });
     return;
   }
@@ -121,6 +119,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   log("info", "wisp_token_issued", { address });
   res.status(200).json({
     wispUrl: selectWispServerUrl(WISP_SERVER_PUBLIC_URLS, req.query.server),
-    token: mintWispToken(),
+    token: signWisp(session.id, WISP_SHARED_SECRET!),
   });
 }
