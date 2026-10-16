@@ -7,11 +7,7 @@
   "functions": {
     "api/access.ts": {
       "maxDuration": 60,
-      "includeFiles": [
-        "api/_lib/face-models.json",
-        "node_modules/@vladmandic/face-api/model/**",
-        "node_modules/@tensorflow/tfjs-backend-wasm/dist/*.wasm"
-      ]
+      "includeFiles": "{api/_lib/face-models.json,node_modules/@vladmandic/face-api/model/**,node_modules/@tensorflow/tfjs-backend-wasm/dist/*.wasm}"
     },
     "api/wisp-config.ts": {
       "maxDuration": 10
