@@ -37,8 +37,12 @@ function loginForm(
   root: HTMLElement,
 ): Promise<{ role: string; recoveryCodes?: string[] }> {
   return new Promise((resolve) => {
-    const gate = el("main", undefined, "face-gate");
-    const card = el("section", undefined, "face-card");
+    const gate = el("main", undefined, "face-gate access-gate");
+    const card = el("section", undefined, "face-card access-card");
+    const brand = el("div", undefined, "access-brand");
+    const mark = el("span", undefined, "access-brand-mark");
+    mark.setAttribute("aria-hidden", "true");
+    brand.append(mark, document.createTextNode("Secure workspace"));
     const title = el("h1", "Private access");
     const description = el(
       "p",
@@ -53,7 +57,7 @@ function loginForm(
       "Face scans are checked by this app. Webcam checks are not hardware-backed Face ID and cannot guarantee protection against photo/video spoofing.",
       "face-note",
     );
-    card.append(title, description, content, message, note);
+    card.append(brand, title, description, content, message, note);
     gate.append(card);
     root.replaceChildren(gate);
     let controller: AbortController | undefined;
@@ -72,23 +76,25 @@ function loginForm(
       title.textContent = "Private access";
       description.textContent =
         "Enter your workspace password, then verify your approved face.";
-      const form = el("form");
-      const label = el("label", "Workspace password");
+      const form = el("form", undefined, "access-form");
+      const label = el("label", "Workspace passcode");
       label.htmlFor = "access-password";
       const password = el("input");
       password.id = "access-password";
+      password.className = "access-input";
+      password.placeholder = "Enter passcode";
       password.type = "password";
       password.autocomplete = "current-password";
       password.required = true;
       password.maxLength = 512;
-      const submit = el("button", "Continue", "face-button");
+      const submit = el("button", "Unlock workspace", "face-button access-submit");
       submit.type = "submit";
       form.append(label, password, submit);
       content.replaceChildren(form);
       form.onsubmit = async (event) => {
         event.preventDefault();
         submit.disabled = true;
-        message.textContent = "Checking password…";
+        message.textContent = "Checking access…";
         try {
           const result = await authRequest("password", {
             password: password.value,
