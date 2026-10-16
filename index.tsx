@@ -1,5 +1,6 @@
 import LoadInterstitial from "./components/LoadInterstitial";
 import App from "./App";
+import { attachQuickExit } from "./quick-exit";
 // Type-only: the transport implementations are loaded on demand in
 // getTransport(). Only ever one of the two is used in a session — the choice is
 // a runtime setting — but importing both at module scope put both of their WASM
@@ -675,5 +676,6 @@ async function start() {
   await mount();
 }
 
+attachQuickExit(window);
 void start();
 export { controller, cachePlugin, languagePlugin };

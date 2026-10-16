@@ -4,7 +4,9 @@ import {
   LinkHandlerPlugin,
   UrlWatcherPlugin,
   LanguagePlugin,
+  ManagedPlugin,
 } from "@mercuryworkshop/scramjet-utils";
+import { attachQuickExit } from "../quick-exit";
 import { versionInfo } from "@mercuryworkshop/scramjet";
 import { cachePlugin, controller, languagePlugin } from "../index";
 import { demoSettingsStore } from "../store";
@@ -12,11 +14,17 @@ import { runBookmarklet } from "../bookmarklets";
 import homepage from "./homepage.html?raw";
 import type { Frame } from "@mercuryworkshop/scramjet-controller";
 
-function encodeDataUrl(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
+class QuickExitPlugin extends ManagedPlugin {
+  constructor() {
+    super("quick-exit", []);
+  }
+
+  install(frame: Frame): void {
+    super.install(frame);
+    this.tap(frame.hooks.init.post, (context) => {
+      attachQuickExit(context.window);
+    });
+  }
 }
 
 export function normalizeNavigationInput(value: string): string {
@@ -562,7 +570,11 @@ const BrowserView: Component<
         timeStyle: "short",
       }),
     );
-    const homepageUrl = `data:text/html;base64,${encodeDataUrl(realHomepage)}`;
+    // Keep the local homepage in our origin so its keyboard events can use
+    // the same quick-exit shortcut as the shell and proxied pages.
+    const homepageUrl = URL.createObjectURL(
+      new Blob([realHomepage], { type: "text/html" }),
+    );
 
     const mountBrowserTab = async (requestedUrl?: string) => {
       const element = document.createElement("iframe");
@@ -613,6 +625,7 @@ const BrowserView: Component<
           eventHandler,
           linkHandler,
           urlWatcher,
+          new QuickExitPlugin(),
         ],
       });
       tab = {
@@ -628,7 +641,15 @@ const BrowserView: Component<
       };
       browserTabs.set(id, tab);
       activateBrowserTab(id);
-      const onLoad = () => updateBrowserTab(tab, { loading: false, error: "" });
+      const onLoad = () => {
+        // The local new-tab homepage does not run the proxy's init hooks.
+        try {
+          if (element.contentWindow) attachQuickExit(element.contentWindow);
+        } catch {
+          // Cross-origin frames are covered by the proxy init hook instead.
+        }
+        updateBrowserTab(tab, { loading: false, error: "" });
+      };
       const onError = () =>
         updateBrowserTab(tab, {
           loading: false,
