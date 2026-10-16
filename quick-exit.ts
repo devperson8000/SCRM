@@ -35,9 +35,11 @@ export function createQuickExitHandler(
 }
 
 const attachedDocuments = new WeakSet<Document>();
-const onExitKey = createQuickExitHandler(() =>
-  window.location.replace("https://www.google.com/"),
-);
+const onExitKey = createQuickExitHandler(() => {
+  // Remove the proxy UI immediately, while the browser loads Google.
+  document.documentElement.style.visibility = "hidden";
+  window.location.replace("https://www.google.com/");
+});
 
 export function attachQuickExit(target: Window) {
   const document = target.document;
