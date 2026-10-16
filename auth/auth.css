@@ -124,3 +124,32 @@
   display: flex;
   flex-wrap: wrap;
 }
+
+/* Preserve the classic Scramjet login appearance around the new face flow.
+   The original access-* styles live in index.html. Keep the admin panel separate. */
+.face-gate.access-gate {
+  position: relative;
+  background: radial-gradient(circle at 15% 10%,rgba(0,255,136,.14),transparent 32%),radial-gradient(circle at 88% 82%,rgba(0,165,255,.12),transparent 34%),#050b0d;
+  color: #edfdf5;
+  font-family: -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;
+}
+.face-card.access-card {
+  position:relative;
+  z-index:1;
+  width:min(420px,calc(100% - 16px));
+  padding:36px;
+  border:1px solid rgba(180,255,220,.18);
+  border-top-color:rgba(220,255,238,.36);
+  border-radius:28px;
+  background:linear-gradient(145deg,rgba(18,33,32,.92),rgba(5,13,17,.9));
+  box-shadow:0 30px 90px rgba(0,0,0,.48);
+  backdrop-filter:blur(24px) saturate(145%);
+}
+.face-card.access-card h1{font:750 clamp(1.8rem,5vw,2.5rem)/1.05 system-ui,sans-serif;letter-spacing:-.05em}
+.face-card.access-card>p{color:#91aaa2;font-size:.92rem}
+.face-card.access-card .face-status{color:#ffe5ac}
+.face-card.access-card .face-note{font-size:12px;color:#a9c0b8}
+.face-card.access-card .access-input{border:1px solid rgba(200,255,225,.16);border-radius:13px;background:rgba(0,0,0,.22);padding:14px 15px}
+.face-card.access-card .face-button{border-radius:13px;background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.45);color:#b8ffda}
+.face-card.access-card .face-button:hover{background:rgba(0,255,136,.2)}
+@media(max-width:480px){.face-card.access-card{padding:24px}}
