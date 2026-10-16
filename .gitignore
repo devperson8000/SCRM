@@ -3,3 +3,4 @@ api/_lib/auth-runtime.js
 .env.auth
 .env.auth.*
 .superpowers/
+api/_lib/face-assets/

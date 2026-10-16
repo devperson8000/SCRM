@@ -2,6 +2,8 @@ import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import jpeg from "jpeg-js";
 
 export const FACE_THRESHOLD = 0.48;
@@ -70,19 +72,28 @@ async function loadModel() {
     loaded = (async () => {
       const face = require("@vladmandic/face-api/dist/face-api.node-wasm.js");
       const wasm = require("@tensorflow/tfjs-backend-wasm");
-      wasm.setWasmPaths(
-        dirname(
-          require.resolve(
-            "@tensorflow/tfjs-backend-wasm/dist/tfjs-backend-wasm.wasm",
-          ),
-        ) + "/",
-      );
+      const staged = fileURLToPath(new URL("./face-assets/", import.meta.url));
+      const hasStagedAssets = existsSync(join(staged, "model"));
+      if (process.env.VERCEL === "1" && !hasStagedAssets)
+        throw new Error(
+          "Face assets are missing. Run pnpm auth:build before deployment.",
+        );
+      const wasmPath = hasStagedAssets
+        ? join(staged, "wasm")
+        : dirname(
+            require.resolve(
+              "@tensorflow/tfjs-backend-wasm/dist/tfjs-backend-wasm.wasm",
+            ),
+          );
+      const modelPath = hasStagedAssets
+        ? join(staged, "model")
+        : join(
+            dirname(require.resolve("@vladmandic/face-api/package.json")),
+            "model",
+          );
+      wasm.setWasmPaths(wasmPath + "/");
       await face.tf.setBackend("wasm");
       await face.tf.ready();
-      const modelPath = join(
-        dirname(require.resolve("@vladmandic/face-api/package.json")),
-        "model",
-      );
       const checksums = JSON.parse(
         await readFile(new URL("./face-models.json", import.meta.url), "utf8"),
       );

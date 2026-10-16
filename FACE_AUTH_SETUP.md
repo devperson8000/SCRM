@@ -113,8 +113,9 @@ The Vercel install command runs `pnpm auth:build` after dependencies are install
 so server modules exist before function tracing. The build command repeats it
 before Vite. This generates an
 ignored `api/_lib/auth-runtime.js` because Vercel does not rewrite TypeScript
-import extensions. The function file configuration includes face models and
-WASM files. Models come from pinned `@vladmandic/face-api@1.7.15`, and the server
+import extensions. The build copies face models and WASM files into the ignored regular directory
+`api/_lib/face-assets/`; the function includes that directory instead of
+pnpm-symlinked `node_modules` paths. Models come from pinned `@vladmandic/face-api@1.7.15`, and the server
 checks their committed SHA-256 checksums before loading.
 
 The face-login function has a 60-second execution budget. Local WASM load plus
