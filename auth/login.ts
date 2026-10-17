@@ -87,7 +87,11 @@ function loginForm(
       password.autocomplete = "current-password";
       password.required = true;
       password.maxLength = 512;
-      const submit = el("button", "Unlock workspace", "face-button access-submit");
+      const submit = el(
+        "button",
+        "Unlock workspace",
+        "face-button access-submit",
+      );
       submit.type = "submit";
       form.append(label, password, submit);
       content.replaceChildren(form);
@@ -147,17 +151,19 @@ function loginForm(
         content.append(captureHost, cancel);
         message.textContent = "";
         try {
+          // Request the one-use server challenge after camera/model warmup.
+          // Permission prompts and positioning must not expire the scan nonce.
+          const images = await captureFace(
+            captureHost,
+            "",
+            aborter.signal,
+            purpose === "login",
+          );
           const challenge = await authRequest(
             "challenge",
             { purpose, ...extra },
             false,
             aborter.signal,
-          );
-          const images = await captureFace(
-            captureHost,
-            challenge.instruction,
-            aborter.signal,
-            purpose === "login",
           );
           message.textContent = "Verifying scan…";
           const result = await authRequest(
@@ -199,6 +205,15 @@ function loginForm(
           if (aborter.signal.aborted) return;
           faceStep(role, setupRequired);
           error(e);
+          if (purpose !== "recover")
+            content.prepend(
+              button(
+                purpose === "login"
+                  ? "Retry face scan"
+                  : "Retry enrollment scan",
+                () => void start(purpose, extra),
+              ),
+            );
         }
       };
       const enrollment = (purpose: string) => {

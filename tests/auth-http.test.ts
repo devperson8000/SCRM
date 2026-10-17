@@ -88,7 +88,7 @@ test("HTTP rejects oversized/non-object inputs and disables caching", async () =
   try {
     for (const body of [
       "[]",
-      JSON.stringify({ action: "password", extra: "x".repeat(900001) }),
+      JSON.stringify({ action: "password", extra: "x".repeat(2_600_001) }),
     ]) {
       const r = await fetch(base + "/api/access", {
         method: "POST",
@@ -129,4 +129,23 @@ test("revocation watcher disconnects an open socket and stops after close", asyn
   active = false;
   await new Promise((r) => setTimeout(r, 30));
   assert.equal(destroyed, true);
+});
+
+test("twenty bounded camera JPEGs fit through both raw and pre-parsed request paths", async () => {
+  const { parseAuthBody } = await import("../api/_lib/auth-http.ts");
+  const { Readable } = await import("node:stream");
+  const body = {
+    action: "enroll",
+    images: Array(20).fill("data:image/jpeg;base64," + "A".repeat(119_970)),
+  };
+  const payload = JSON.stringify(body);
+  const raw: any = Readable.from([Buffer.from(payload)]);
+  raw.headers = {
+    "content-type": "application/json",
+    "content-length": String(Buffer.byteLength(payload)),
+  };
+  raw.setTimeout = () => {};
+  assert.equal((await parseAuthBody(raw)).images.length, 20);
+  const parsed: any = { body, headers: {} };
+  assert.equal((await parseAuthBody(parsed)).images.length, 20);
 });

@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { cameraVideo, demoFaceJpeg } from "../face-fixture.ts";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
@@ -41,7 +45,7 @@ const config = {
   secret: randomBytes(32).toString("hex"),
 };
 const service = new AuthService(pool, config, async (images) => {
-  assert.equal(images.length, 6);
+  assert.ok(images.length === 1 || images.length === 20);
   return descriptor;
 });
 const server = createServer(
@@ -86,12 +90,16 @@ if (!ready) {
   dev.kill();
   throw new Error("Test development server did not start.");
 }
+const fixtureDirectory = await mkdtemp(join(tmpdir(), "scrm-camera-"));
+const videoPath = join(fixtureDirectory, "camera.y4m");
+await writeFile(videoPath, await cameraVideo());
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
   headless: true,
   args: [
     "--no-sandbox",
     "--use-fake-device-for-media-stream",
+    `--use-file-for-fake-video-capture=${videoPath}`,
     "--use-fake-ui-for-media-stream",
   ],
 });
@@ -110,14 +118,36 @@ async function pageFor() {
     console.error("Browser error:", e.message),
   );
   await page.goto(origin);
+  await page.getByLabel("Workspace passcode").waitFor();
   return page;
 }
 async function password(page: any, value: string) {
-  await page.getByLabel("Workspace password").fill(value);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Workspace passcode").fill(value);
+  await page
+    .getByRole("button", { name: "Unlock workspace", exact: true })
+    .click();
 }
 try {
   const admin = await pageFor();
+  const browserDetection = await admin.evaluate(
+    async (image: string) => {
+      const { createFaceGuide } = await import("/auth/detector.ts");
+      const detect = await createFaceGuide();
+      const photo = new Image();
+      photo.src = image;
+      await photo.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 240;
+      canvas.getContext("2d")!.drawImage(photo, 0, 0);
+      return (await detect(canvas, true)).length;
+    },
+    await demoFaceJpeg(),
+  );
+  assert.equal(browserDetection, 1);
+  console.log(
+    "PASS self-hosted browser face guidance detects the public demo fixture",
+  );
   await password(admin, adminPassword);
   await admin
     .getByRole("button", { name: "Enroll administrator face" })
@@ -127,7 +157,7 @@ try {
   await admin.getByRole("button", { name: "Start face enrollment" }).click();
   await admin
     .getByRole("heading", { name: "Admin Panel", exact: true })
-    .waitFor({ timeout: 25000 });
+    .waitFor({ timeout: 60000 });
   assert.equal(
     await admin
       .getByRole("textbox", { name: "Recovery codes" })
@@ -149,7 +179,7 @@ try {
   await user.getByRole("button", { name: "Start face enrollment" }).click();
   await user
     .getByRole("heading", { name: "Awaiting approval" })
-    .waitFor({ timeout: 25000 });
+    .waitFor({ timeout: 60000 });
   assert.equal(await user.locator(".browser-frame").count(), 0);
   console.log("PASS enrollment remains pending and never starts the proxy");
   await admin.getByRole("button", { name: "Refresh requests" }).click();
@@ -162,7 +192,7 @@ try {
   await user.getByRole("button", { name: "Scan my face", exact: true }).click();
   await user.waitForFunction(
     () => sessionStorage.getItem("scramjet-access-session") === "granted",
-    { timeout: 25000 },
+    { timeout: 60000 },
   );
   const status = await user.evaluate(() =>
     fetch("/api/access").then((r) => r.json()),
@@ -182,6 +212,16 @@ try {
   );
   console.log("PASS admin revocation invalidates the user session");
   const cancel = await pageFor();
+  await cancel.evaluate(() => {
+    const original = navigator.mediaDevices.getUserMedia.bind(
+      navigator.mediaDevices,
+    );
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      const stream = await original(constraints);
+      (window as any).testCameraTracks = stream.getTracks();
+      return stream;
+    };
+  });
   await password(cancel, userPassword);
   await cancel
     .getByRole("button", { name: "Scan my face", exact: true })
@@ -189,17 +229,51 @@ try {
   await cancel.locator("video").waitFor();
   await cancel.getByRole("button", { name: "Cancel scan" }).click();
   assert.equal(await cancel.locator("video").count(), 0);
-  console.log("PASS scan cancellation removes camera UI");
+  await cancel.waitForFunction(() =>
+    (window as any).testCameraTracks?.every(
+      (track: MediaStreamTrack) => track.readyState === "ended",
+    ),
+  );
+  console.log(
+    "PASS scan cancellation stops camera tracks and removes camera UI",
+  );
+  const denied = await pageFor();
+  await denied.evaluate(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException("Denied", "NotAllowedError");
+    };
+  });
+  await password(denied, userPassword);
+  await denied
+    .getByRole("button", { name: "Scan my face", exact: true })
+    .click();
+  await denied.getByText(/Camera permission was denied/).waitFor();
+  assert.equal(await denied.locator("video").count(), 0);
+  assert.equal(
+    await denied
+      .getByRole("button", { name: "Retry face scan", exact: true })
+      .count(),
+    1,
+  );
+  console.log("PASS denied camera access gives Chrome guidance and a retry");
 } catch (error) {
   for (const page of browser.contexts().flatMap((c: any) => c.pages()))
     console.error(
       "UI status:",
-      await page.locator(".face-status").allTextContents(),
+      await page
+        .locator(".face-status, .face-prompt, .face-note, progress")
+        .evaluateAll((nodes: Element[]) =>
+          nodes.map((n) => ({
+            text: n.textContent,
+            value: (n as HTMLProgressElement).value,
+          })),
+        ),
     );
   throw error;
 } finally {
   dev.kill();
   await browser.close();
+  await rm(fixtureDirectory, { recursive: true, force: true });
   server.closeAllConnections();
   await new Promise<void>((r) => server.close(() => r()));
   await pool.end();

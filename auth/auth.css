@@ -153,3 +153,8 @@
 .face-card.access-card .face-button{border-radius:13px;background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.45);color:#b8ffda}
 .face-card.access-card .face-button:hover{background:rgba(0,255,136,.2)}
 @media(max-width:480px){.face-card.access-card{padding:24px}}
+
+.face-preview { position:relative; border-radius:12px; overflow:hidden; background:#000; }
+.face-guide { position:absolute; width:54%; height:78%; left:23%; top:11%; border:2px solid #f4ca72; border-radius:48%; pointer-events:none; transition:border-color .15s; }
+.face-ready .face-guide { border-color:#80ffc3; box-shadow:0 0 12px #80ffc333; }
+.face-card progress { display:block; width:100%; height:10px; margin:16px 0; accent-color:#80ffc3; }

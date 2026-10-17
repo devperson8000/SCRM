@@ -2,8 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import pg from "pg";
+import jpeg from "jpeg-js";
 import { AuthService, migrateAuth } from "../api/_lib/auth-service.ts";
 import { hashPassword, hashSecret } from "../api/_lib/auth-crypto.ts";
+const samplePhoto =
+  "data:image/jpeg;base64," +
+  jpeg
+    .encode(
+      { width: 160, height: 120, data: Buffer.alloc(160 * 120 * 4, 120) },
+      70,
+    )
+    .data.toString("base64");
+const photos = Array(20).fill(samplePhoto);
 const url = process.env.TEST_DATABASE_URL;
 if (!url)
   throw new Error(
@@ -103,7 +113,7 @@ test("enrollment stays pending, no session, and challenge cannot be replayed", a
     id = await challenge(p, "enroll");
   const result = await call(
     "enroll",
-    { challengeId: id, images: [], name: "Test person", consent: true },
+    { challengeId: id, images: photos, name: "Test person", consent: true },
     p,
   );
   assert.equal(result.status, 202);
@@ -113,7 +123,7 @@ test("enrollment stays pending, no session, and challenge cannot be replayed", a
     (
       await call(
         "enroll",
-        { challengeId: id, images: [], name: "Replay", consent: true },
+        { challengeId: id, images: photos, name: "Replay", consent: true },
         p,
       )
     ).status,

@@ -8,7 +8,12 @@ import {
   seal,
   unseal,
 } from "./auth-crypto.ts";
-import { faceDistance, FACE_THRESHOLD, verifyCapture } from "./face.ts";
+import {
+  faceDistance,
+  FACE_THRESHOLD,
+  verifyCapture,
+  FaceCaptureError,
+} from "./face.ts";
 
 export type AuthConfig = {
   userHash: string;
@@ -368,11 +373,23 @@ export class AuthService {
       pre.hash,
     );
     let descriptor: number[];
+    let reviewFrameIndex = 0;
     try {
-      descriptor = await this.verify(body.images, scan.data.instruction);
+      const verified = await this.verify(
+        body.images,
+        action === "login" ? "login" : "enroll",
+      );
+      descriptor = Array.isArray(verified) ? verified : verified.descriptor;
+      if (!Array.isArray(verified))
+        reviewFrameIndex = verified.reviewFrameIndex;
       faceDistance(descriptor, descriptor);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : "Unknown face verification error";
+      if (error instanceof FaceCaptureError)
+        throw new AuthError(error.status, error.message);
+      const reason =
+        error instanceof Error
+          ? error.message
+          : "Unknown face verification error";
       // Only classify the failure in server logs; never log frames or templates.
       console.error("[auth] Face verification rejected:", reason);
       const safeErrors = [
@@ -388,9 +405,12 @@ export class AuthService {
         "Not enough clear photos were detected. Keep your face in view and try again.",
         "Photos were not consistent enough to confirm one face. Try again with steadier lighting.",
       ];
-      deny(400, safeErrors.includes(reason)
-        ? reason
-        : "The face scan could not be processed. Try again; if it continues, contact the administrator.");
+      deny(
+        400,
+        safeErrors.includes(reason)
+          ? reason
+          : "The face scan could not be processed. Try again; if it continues, contact the administrator.",
+      );
     }
     return this.transaction(async (db) => {
       // Recheck pre-auth and administrator setup after inference and locking.
@@ -400,7 +420,7 @@ export class AuthService {
       );
       if (!fresh.rowCount) deny(401, "Enter your password again.");
       await db.query(
-        "UPDATE auth_users SET status='rejected',template=NULL,updated=now() WHERE status='pending' AND created<now()-interval '7 days'",
+        "UPDATE auth_users SET status='rejected',template=NULL,review_photo=NULL,updated=now() WHERE status='pending' AND created<now()-interval '7 days'",
       );
       const all = await db.query(
         "SELECT * FROM auth_users WHERE template IS NOT NULL AND status IN ('pending','approved')",
@@ -448,12 +468,21 @@ export class AuthService {
         const id = randomUUID();
         // Store a single encrypted thumbnail only while awaiting approval.
         // The 20 captured images are otherwise discarded after verification.
-        const preview = body.images?.[0];
-        if (typeof preview !== "string" || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(preview) || preview.length > 120_000)
+        const preview = body.images?.[reviewFrameIndex];
+        if (
+          typeof preview !== "string" ||
+          !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(preview) ||
+          preview.length > 120_000
+        )
           deny(400, "A valid enrollment photo is required.");
         await db.query(
           "INSERT INTO auth_users(id,name,role,status,template,review_photo) VALUES($1,$2,'user','pending',$3,$4)",
-          [id, body.name.trim(), seal(descriptor, this.config.templateKey, id), seal(preview, this.config.templateKey, id)],
+          [
+            id,
+            body.name.trim(),
+            seal(descriptor, this.config.templateKey, id),
+            seal(preview, this.config.templateKey, id),
+          ],
         );
         const receipt = await this.createToken(
           "receipt",
@@ -532,12 +561,22 @@ export class AuthService {
       const r = await this.pool.query(
         "SELECT id,name,role,status,created,updated,review_photo FROM auth_users WHERE role='user' ORDER BY created DESC LIMIT 500",
       );
-      return { status: 200, body: { users: r.rows.map(({ review_photo, ...user }) => ({
-        ...user,
-        preview: user.status === "pending" && review_photo
-          ? unseal(review_photo, this.config.templateKey, user.id) as unknown as string
-          : null,
-      })) } };
+      return {
+        status: 200,
+        body: {
+          users: r.rows.map(({ review_photo, ...user }) => ({
+            ...user,
+            preview:
+              user.status === "pending" && review_photo
+                ? (unseal(
+                    review_photo,
+                    this.config.templateKey,
+                    user.id,
+                  ) as unknown as string)
+                : null,
+          })),
+        },
+      };
     }
     if (
       ![

@@ -12,6 +12,9 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default {
   root: __dirname,
+  // Warm the lazy camera dependency at startup; discovering it during a scan
+  // would make Vite reload the page and interrupt enrollment.
+  optimizeDeps: { include: ["@vladmandic/face-api/dist/face-api.esm.js"] },
   resolve: {
     alias: [
       {
@@ -47,6 +50,20 @@ export default {
     viteStaticCopy({
       structured: false,
       targets: [
+        {
+          src: join(
+            __dirname,
+            "api/_lib/face-assets/model/tiny_face_detector_model*",
+          ),
+          dest: "face-detection",
+        },
+        {
+          src: join(
+            __dirname,
+            "api/_lib/face-assets/model/ssd_mobilenetv1_model*",
+          ),
+          dest: "face-detection",
+        },
         {
           src: join(__dirname, "node_modules/@mercuryworkshop/scramjet/dist/*"),
           dest: "scramjet",

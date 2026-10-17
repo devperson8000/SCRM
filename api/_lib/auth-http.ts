@@ -1,3 +1,4 @@
+import { MAX_SCAN_BODY_BYTES } from "../../auth/capture-policy.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { getAuthService, type AuthService } from "./auth-service.ts";
 import { readCookie, clientAddress, SECURITY_HEADERS } from "./session.ts";
@@ -15,7 +16,7 @@ function cookie(name: string, value: string, secure: boolean, maxAge?: number) {
   return `${name}=${value}; Path=/; HttpOnly; SameSite=Strict${secure ? "; Secure" : ""}${maxAge === undefined ? "" : "; Max-Age=" + maxAge}`;
 }
 export async function parseAuthBody(req: IncomingMessage & { body?: unknown }) {
-  const max = 900_000;
+  const max = MAX_SCAN_BODY_BYTES;
   if (req.body !== undefined) {
     const body =
       typeof req.body === "string" ? req.body : JSON.stringify(req.body);
@@ -71,7 +72,10 @@ async function handle(
   } catch (error) {
     // Keep secrets out of the client response, but log the validation reason
     // so deployment configuration mistakes can be diagnosed in Vercel logs.
-    console.error("[auth] Failed to initialise authentication:", error instanceof Error ? error.message : "Unknown configuration error");
+    console.error(
+      "[auth] Failed to initialise authentication:",
+      error instanceof Error ? error.message : "Unknown configuration error",
+    );
     sendAuth(res, 503, {
       error:
         "Face login is not configured. See FACE_AUTH_SETUP.md for required database, keys, passwords and migration.",
