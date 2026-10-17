@@ -384,6 +384,8 @@ export class AuthService {
         "More than one face was detected. Please scan alone.",
         "Your face appeared too small in one frame. Move a little closer to the camera.",
         "Keep the same face in view throughout the scan.",
+        "Not enough clear photos were detected. Keep your face in view and try again.",
+        "Photos were not consistent enough to confirm one face. Try again with steadier lighting.",
       ];
       deny(400, safeErrors.includes(reason)
         ? reason

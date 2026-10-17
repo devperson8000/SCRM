@@ -20,7 +20,7 @@ export async function captureFace(
   const warning = document.createElement("p");
   warning.className = "face-note";
   warning.textContent =
-    "Keep one well-lit face in view. Follow the arrows in the camera preview.";
+    "Keep one face in view. The camera takes 20 photos automatically; change angles naturally.";
   host.replaceChildren(video, prompt, warning);
   let stream: MediaStream | undefined;
   const stop = () => {
@@ -67,23 +67,16 @@ export async function captureFace(
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Camera capture is unavailable.");
     const images: string[] = [];
-    const first = instruction === "left-right" ? "LEFT ←" : "RIGHT →";
-    const second = instruction === "left-right" ? "RIGHT →" : "LEFT ←";
-    for (const message of [
-      "Look straight into the camera",
-      `Turn your head ${first} gently and hold still. Keep both eyes visible.`,
-      `Now turn your head ${second} gently and hold still.`,
-    ]) {
-      prompt.textContent = message;
-      await wait(3400);
-      for (let i = 0; i < 2; i++) {
-        if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-        if (video.readyState < 2 || video.videoWidth === 0)
-          throw new Error("Camera is not ready. Try again.");
-        context.drawImage(video, 0, 0, 320, 240);
-        images.push(canvas.toDataURL("image/jpeg", 0.75));
-        await wait(350);
-      }
+    prompt.textContent = "Capturing 20 photos. Look at the camera and gently vary your angle when comfortable; no fixed turns or perfect pose needed.";
+    // 20 fresh images over ~17 seconds. Do not store frames locally once submitted.
+    for (let i = 0; i < 20; i++) {
+      if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
+      prompt.textContent = `Capturing photo ${i + 1} of 20. Move naturally and keep your face in view.`;
+      await wait(i === 0 ? 1500 : 850);
+      if (video.readyState < 2 || video.videoWidth === 0)
+        throw new Error("Camera is not ready. Try again.");
+      context.drawImage(video, 0, 0, 320, 240);
+      images.push(canvas.toDataURL("image/jpeg", 0.72));
     }
     prompt.textContent = "Checking your scan…";
     return images;

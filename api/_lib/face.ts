@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import jpeg from "jpeg-js";
 
 export const FACE_THRESHOLD = 0.48;
-export const FRAME_COUNT = 6;
+export const FRAME_COUNT = 20;
 const require = createRequire(import.meta.url);
 
 export function faceDistance(a: number[], b: number[]): number {
@@ -47,29 +47,7 @@ export function decodeFrame(value: string) {
   return image;
 }
 
-export function verifyMotion(poses: number[], instruction: string) {
-  if (
-    poses.length !== FRAME_COUNT ||
-    !poses.every(Number.isFinite) ||
-    !["left-right", "right-left"].includes(instruction)
-  )
-    throw new Error("Invalid camera challenge.");
-  const center = (poses[0] + poses[1]) / 2;
-  const first = (poses[2] + poses[3]) / 2 - center;
-  const second = (poses[4] + poses[5]) / 2 - center;
-  // Preview mirroring, webcam drivers and facial-landmark orientation can
-  // reverse the sign of yaw. Require two genuine opposite head movements
-  // instead of trusting the sign assigned to an on-screen arrow.
-  const minTurn = 0.025;
-  if (Math.abs(center) > 0.5)
-    throw new Error("Start with your face looking straight at the camera.");
-  if (Math.abs(first) < minTurn)
-    throw new Error("First head turn was too small. Turn a little farther toward the first arrow.");
-  if (Math.abs(second) < minTurn)
-    throw new Error("Second head turn was too small. Turn a little farther toward the second arrow.");
-  if (first * second >= 0)
-    throw new Error("Both turns looked like the same direction. Turn toward opposite sides of the camera.");
-}
+// No scripted yaw sequence: photos are sampled across naturally varied angles.
 
 let loaded: Promise<any> | undefined;
 async function loadModel() {
@@ -133,77 +111,47 @@ export async function verifyCapture(
   const run = queue.then(async () => {
     const face = await loadModel();
     const descriptors: number[][] = [];
-    const poses: number[][] = [[], [], []];
-    const detectedByPose: number[] = [0, 0, 0];
-    for (const [frameIndex, image] of decoded.entries()) {
-      const poseIndex = Math.floor(frameIndex / 2);
+    for (const image of decoded) {
       const rgb = new Int32Array(image.width * image.height * 3);
       for (let i = 0, j = 0; i < image.data.length; i += 4) {
         rgb[j++] = image.data[i];
         rgb[j++] = image.data[i + 1];
         rgb[j++] = image.data[i + 2];
       }
-      const tensor = face.tf.tensor3d(
-        rgb,
-        [image.height, image.width, 3],
-        "int32",
-      );
+      const tensor = face.tf.tensor3d(rgb, [image.height, image.width, 3], "int32");
       try {
-        let results = await face
+        const results = await face
           .detectAllFaces(
             tensor,
-            new face.TinyFaceDetectorOptions({
-              inputSize: 320,
-              scoreThreshold: 0.45,
-            }),
+            new face.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 }),
           )
           .withFaceLandmarks()
           .withFaceDescriptors();
-        // Retry borderline images once with a more sensitive detector. A
-        // single dropped frame must not invalidate an otherwise valid pose.
-        if (results.length === 0) {
-          results = await face
-            .detectAllFaces(
-              tensor,
-              new face.TinyFaceDetectorOptions({
-                inputSize: 416,
-                scoreThreshold: 0.3,
-              }),
-            )
-            .withFaceLandmarks()
-            .withFaceDescriptors();
-        }
         if (results.length > 1)
           throw new Error("More than one face was detected. Please scan alone.");
-        if (results.length === 0 || results[0].detection.box.width < 45)
-          continue;
-        const result = results[0];
-        detectedByPose[poseIndex]++;
-        descriptors.push(Array.from(result.descriptor));
-        const nose = result.landmarks.getNose()[3];
-        const left = result.landmarks.getLeftEye();
-        const right = result.landmarks.getRightEye();
-        const lx = left.reduce((s: number, p: any) => s + p.x, 0) / left.length;
-        const rx =
-          right.reduce((s: number, p: any) => s + p.x, 0) / right.length;
-        poses[poseIndex].push((nose.x - (lx + rx) / 2) / Math.abs(rx - lx));
+        if (results.length !== 1 || results[0].detection.box.width < 45)
+          continue; // A missed frame does not cancel all 20 images.
+        descriptors.push(Array.from(results[0].descriptor));
       } finally {
         tensor.dispose();
       }
     }
-    if (detectedByPose.some((count) => count === 0))
-      throw new Error("No face was reliably detected at one position. Keep your face in view during each hold.");
-    const poseAverages = poses.map((group) => group.reduce((a, b) => a + b, 0) / group.length);
-    // Preserve the existing six-value motion validator, using the average
-    // of successfully detected frames from each of the three positions.
-    verifyMotion(poseAverages.flatMap((value) => [value, value]), instruction);
-    if (
-      descriptors.some((d) => faceDistance(descriptors[0], d) > FACE_THRESHOLD)
-    )
-      throw new Error("Keep the same face in view throughout the scan.");
-    return descriptors[0].map(
-      (_, i) => descriptors.reduce((s, d) => s + d[i], 0) / descriptors.length,
-    );
+    if (descriptors.length < 12)
+      throw new Error("Not enough clear photos were detected. Keep your face in view and try again.");
+    // Choose the most representative descriptor. Reject inconsistent identity
+    // while tolerating variations in pose and individual poor frames.
+    const distances = descriptors.map((a) =>
+      descriptors.map((b) => faceDistance(a, b)));
+    const index = distances.reduce((best, values, i) =>
+      values.reduce((a, b) => a + b, 0) <
+        distances[best].reduce((a, b) => a + b, 0) ? i : best, 0);
+    const matching = descriptors.filter((d) =>
+      faceDistance(descriptors[index], d) <= FACE_THRESHOLD);
+    if (matching.length < 12)
+      throw new Error("Photos were not consistent enough to confirm one face. Try again with steadier lighting.");
+    return descriptors[index].map((_, i) =>
+      matching.reduce((sum, d) => sum + d[i], 0) / matching.length);
+
   });
   queue = run.catch(() => undefined);
   return run;
