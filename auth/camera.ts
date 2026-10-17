@@ -67,15 +67,15 @@ export async function captureFace(
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Camera capture is unavailable.");
     const images: string[] = [];
-    const first = instruction === "left-right" ? "←" : "→";
-    const second = instruction === "left-right" ? "→" : "←";
+    const first = instruction === "left-right" ? "LEFT ←" : "RIGHT →";
+    const second = instruction === "left-right" ? "RIGHT →" : "LEFT ←";
     for (const message of [
       "Look straight into the camera",
-      `Turn your head toward this edge of the preview ${first}`,
-      `Now turn toward the other edge ${second}`,
+      `Turn your head ${first} slightly and hold still. Keep both eyes visible.`,
+      `Now turn your head ${second} slightly and hold still.`,
     ]) {
       prompt.textContent = message;
-      await wait(1800);
+      await wait(2700);
       for (let i = 0; i < 2; i++) {
         if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
         if (video.readyState < 2 || video.videoWidth === 0)
