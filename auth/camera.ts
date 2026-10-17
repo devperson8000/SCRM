@@ -71,11 +71,11 @@ export async function captureFace(
     const second = instruction === "left-right" ? "RIGHT →" : "LEFT ←";
     for (const message of [
       "Look straight into the camera",
-      `Turn your head ${first} slightly and hold still. Keep both eyes visible.`,
-      `Now turn your head ${second} slightly and hold still.`,
+      `Turn your head ${first} gently and hold still. Keep both eyes visible.`,
+      `Now turn your head ${second} gently and hold still.`,
     ]) {
       prompt.textContent = message;
-      await wait(2700);
+      await wait(3400);
       for (let i = 0; i < 2; i++) {
         if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
         if (video.readyState < 2 || video.videoWidth === 0)
