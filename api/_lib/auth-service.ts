@@ -380,6 +380,9 @@ export class AuthService {
         "Second head turn was too small. Turn a little farther toward the second arrow.",
         "Both turns looked like the same direction. Turn toward opposite sides of the camera.",
         "Show exactly one well-lit face, closer to the camera.",
+        "No face was detected in one of the scan frames. Keep your whole face visible while turning.",
+        "More than one face was detected. Please scan alone.",
+        "Your face appeared too small in one frame. Move a little closer to the camera.",
         "Keep the same face in view throughout the scan.",
       ];
       deny(400, safeErrors.includes(reason)
