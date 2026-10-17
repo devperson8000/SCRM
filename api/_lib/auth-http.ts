@@ -68,7 +68,10 @@ async function handle(
   let service: AuthService;
   try {
     service = supplied ?? getAuthService();
-  } catch {
+  } catch (error) {
+    // Keep secrets out of the client response, but log the validation reason
+    // so deployment configuration mistakes can be diagnosed in Vercel logs.
+    console.error("[auth] Failed to initialise authentication:", error instanceof Error ? error.message : "Unknown configuration error");
     sendAuth(res, 503, {
       error:
         "Face login is not configured. See FACE_AUTH_SETUP.md for required database, keys, passwords and migration.",
