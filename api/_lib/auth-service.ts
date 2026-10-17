@@ -374,10 +374,17 @@ export class AuthService {
       const reason = error instanceof Error ? error.message : "Unknown face verification error";
       // Only classify the failure in server logs; never log frames or templates.
       console.error("[auth] Face verification rejected:", reason);
-      deny(
-        400,
-        "Face scan failed. Follow the instructions with one well-lit face and try again.",
-      );
+      const safeErrors = [
+        "Start with your face looking straight at the camera.",
+        "First head turn was too small. Turn a little farther toward the first arrow.",
+        "Second head turn was too small. Turn a little farther toward the second arrow.",
+        "Both turns looked like the same direction. Turn toward opposite sides of the camera.",
+        "Show exactly one well-lit face, closer to the camera.",
+        "Keep the same face in view throughout the scan.",
+      ];
+      deny(400, safeErrors.includes(reason)
+        ? reason
+        : "The face scan could not be processed. Try again; if it continues, contact the administrator.");
     }
     return this.transaction(async (db) => {
       // Recheck pre-auth and administrator setup after inference and locking.
