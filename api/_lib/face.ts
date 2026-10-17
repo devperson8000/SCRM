@@ -57,13 +57,18 @@ export function verifyMotion(poses: number[], instruction: string) {
   const center = (poses[0] + poses[1]) / 2;
   const first = (poses[2] + poses[3]) / 2 - center;
   const second = (poses[4] + poses[5]) / 2 - center;
-  const direction = instruction === "left-right" ? -1 : 1;
-  if (
-    Math.abs(center) > 0.36 ||
-    first * direction < 0.075 ||
-    second * direction > -0.075
-  )
-    throw new Error("Follow the head-turn instructions and try again.");
+  // Preview mirroring, webcam drivers and facial-landmark orientation can
+  // reverse the sign of yaw. Require two genuine opposite head movements
+  // instead of trusting the sign assigned to an on-screen arrow.
+  const minTurn = 0.05;
+  if (Math.abs(center) > 0.42)
+    throw new Error("Start with your face looking straight at the camera.");
+  if (Math.abs(first) < minTurn)
+    throw new Error("First head turn was too small. Turn a little farther toward the first arrow.");
+  if (Math.abs(second) < minTurn)
+    throw new Error("Second head turn was too small. Turn a little farther toward the second arrow.");
+  if (first * second >= 0)
+    throw new Error("Both turns looked like the same direction. Turn toward opposite sides of the camera.");
 }
 
 let loaded: Promise<any> | undefined;
