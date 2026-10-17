@@ -370,7 +370,10 @@ export class AuthService {
     try {
       descriptor = await this.verify(body.images, scan.data.instruction);
       faceDistance(descriptor, descriptor);
-    } catch {
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Unknown face verification error";
+      // Only classify the failure in server logs; never log frames or templates.
+      console.error("[auth] Face verification rejected:", reason);
       deny(
         400,
         "Face scan failed. Follow the instructions with one well-lit face and try again.",
