@@ -84,6 +84,18 @@ export async function showAdmin(
               `${user.status} · Requested ${new Date(user.created).toLocaleString()} · ${user.id}`,
             ),
           );
+          if (user.status === "pending" && user.preview) {
+            const photo = el("img");
+            photo.src = user.preview;
+            photo.alt = "Enrollment photo submitted for administrator identity review";
+            photo.width = 160;
+            photo.height = 120;
+            photo.style.objectFit = "contain";
+            photo.style.borderRadius = "8px";
+            photo.style.display = "block";
+            photo.style.margin = "12px 0";
+            row.append(photo);
+          }
           const controls = el("div", undefined, "face-actions");
           const act = (action: string) => async () => {
             if (

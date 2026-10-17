@@ -49,6 +49,7 @@ export async function migrateAuth(pool: pg.Pool) {
   await pool.query(`
  CREATE TABLE IF NOT EXISTS auth_users (id uuid PRIMARY KEY, name text NOT NULL CHECK(length(name) BETWEEN 1 AND 80), role text NOT NULL CHECK(role IN ('user','admin')), status text NOT NULL CHECK(status IN ('pending','approved','rejected','revoked')), template text, created timestamptz NOT NULL DEFAULT now(), updated timestamptz NOT NULL DEFAULT now());
  ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS auth_version integer NOT NULL DEFAULT 0;
+ ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS review_photo text;
  CREATE UNIQUE INDEX IF NOT EXISTS auth_single_admin ON auth_users(role) WHERE role='admin';
  CREATE TABLE IF NOT EXISTS auth_tokens (hash text PRIMARY KEY, kind text NOT NULL, role text, user_id uuid REFERENCES auth_users(id) ON DELETE CASCADE, data jsonb NOT NULL DEFAULT '{}', expires timestamptz NOT NULL);
  CREATE INDEX IF NOT EXISTS auth_tokens_expiration ON auth_tokens(expires);
@@ -166,7 +167,7 @@ export class AuthService {
   }
   async cleanup() {
     await this.pool.query(
-      `UPDATE auth_users SET status='rejected',template=NULL,updated=now() WHERE status='pending' AND created<now()-interval '7 days'`,
+      `UPDATE auth_users SET status='rejected',template=NULL,review_photo=NULL,updated=now() WHERE status='pending' AND created<now()-interval '7 days'`,
     );
     await this.pool.query("DELETE FROM auth_tokens WHERE expires<now()");
     await this.pool.query("DELETE FROM auth_rate WHERE expires<now()");
@@ -445,9 +446,14 @@ export class AuthService {
             "This face already has an enrollment. Contact the administrator.",
           );
         const id = randomUUID();
+        // Store a single encrypted thumbnail only while awaiting approval.
+        // The 20 captured images are otherwise discarded after verification.
+        const preview = body.images?.[0];
+        if (typeof preview !== "string" || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(preview) || preview.length > 120_000)
+          deny(400, "A valid enrollment photo is required.");
         await db.query(
-          "INSERT INTO auth_users(id,name,role,status,template) VALUES($1,$2,'user','pending',$3)",
-          [id, body.name.trim(), seal(descriptor, this.config.templateKey, id)],
+          "INSERT INTO auth_users(id,name,role,status,template,review_photo) VALUES($1,$2,'user','pending',$3,$4)",
+          [id, body.name.trim(), seal(descriptor, this.config.templateKey, id), seal(preview, this.config.templateKey, id)],
         );
         const receipt = await this.createToken(
           "receipt",
@@ -524,9 +530,14 @@ export class AuthService {
     if (action === "admin-list") {
       await this.cleanup();
       const r = await this.pool.query(
-        "SELECT id,name,role,status,created,updated FROM auth_users WHERE role='user' ORDER BY created DESC LIMIT 500",
+        "SELECT id,name,role,status,created,updated,review_photo FROM auth_users WHERE role='user' ORDER BY created DESC LIMIT 500",
       );
-      return { status: 200, body: { users: r.rows } };
+      return { status: 200, body: { users: r.rows.map(({ review_photo, ...user }) => ({
+        ...user,
+        preview: user.status === "pending" && review_photo
+          ? unseal(review_photo, this.config.templateKey, user.id) as unknown as string
+          : null,
+      })) } };
     }
     if (
       ![
@@ -558,14 +569,14 @@ export class AuthService {
         )
           deny(409, "Only current pending requests can be approved.");
         await db.query(
-          "UPDATE auth_users SET status='approved',updated=now() WHERE id=$1",
+          "UPDATE auth_users SET status='approved',review_photo=NULL,updated=now() WHERE id=$1",
           [body.id],
         );
       } else if (action === "admin-delete")
         await db.query("DELETE FROM auth_users WHERE id=$1", [body.id]);
       else {
         await db.query(
-          "UPDATE auth_users SET status=$2,template=NULL,updated=now() WHERE id=$1",
+          "UPDATE auth_users SET status=$2,template=NULL,review_photo=NULL,updated=now() WHERE id=$1",
           [body.id, action === "admin-reject" ? "rejected" : "revoked"],
         );
         await db.query(

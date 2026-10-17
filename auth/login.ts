@@ -237,7 +237,9 @@ function loginForm(
         consentLabel.append(
           consent,
           document.createTextNode(
-            "I consent to encrypted storage of my face template for login. Raw camera images are not saved. Rejected/revoked templates are deleted; pending requests expire after 7 days.",
+            purpose === "enroll"
+              ? "I consent to encrypted storage of my face template and one review photo, shown only to the administrator while approval is pending. The review photo is deleted when approved, rejected or expired; other camera images are not stored."
+              : "I consent to encrypted storage of my face template for login. Camera images are not stored.",
           ),
         );
         const submit = el("button", "Start face enrollment", "face-button");
