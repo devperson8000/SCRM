@@ -151,16 +151,18 @@ export async function verifyCapture(
           .detectAllFaces(
             tensor,
             new face.TinyFaceDetectorOptions({
-              inputSize: 224,
-              scoreThreshold: 0.6,
+              inputSize: 320,
+              scoreThreshold: 0.45,
             }),
           )
           .withFaceLandmarks()
           .withFaceDescriptors();
-        if (results.length !== 1 || results[0].detection.box.width < 60)
-          throw new Error(
-            "Show exactly one well-lit face, closer to the camera.",
-          );
+        if (results.length === 0)
+          throw new Error("No face was detected in one of the scan frames. Keep your whole face visible while turning.");
+        if (results.length > 1)
+          throw new Error("More than one face was detected. Please scan alone.");
+        if (results[0].detection.box.width < 45)
+          throw new Error("Your face appeared too small in one frame. Move a little closer to the camera.");
         const result = results[0];
         descriptors.push(Array.from(result.descriptor));
         const nose = result.landmarks.getNose()[3];
