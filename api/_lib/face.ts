@@ -133,8 +133,10 @@ export async function verifyCapture(
   const run = queue.then(async () => {
     const face = await loadModel();
     const descriptors: number[][] = [];
-    const poses: number[] = [];
-    for (const image of decoded) {
+    const poses: number[][] = [[], [], []];
+    const detectedByPose: number[] = [0, 0, 0];
+    for (const [frameIndex, image] of decoded.entries()) {
+      const poseIndex = Math.floor(frameIndex / 2);
       const rgb = new Int32Array(image.width * image.height * 3);
       for (let i = 0, j = 0; i < image.data.length; i += 4) {
         rgb[j++] = image.data[i];
@@ -147,7 +149,7 @@ export async function verifyCapture(
         "int32",
       );
       try {
-        const results = await face
+        let results = await face
           .detectAllFaces(
             tensor,
             new face.TinyFaceDetectorOptions({
@@ -157,13 +159,26 @@ export async function verifyCapture(
           )
           .withFaceLandmarks()
           .withFaceDescriptors();
-        if (results.length === 0)
-          throw new Error("No face was detected in one of the scan frames. Keep your whole face visible while turning.");
+        // Retry borderline images once with a more sensitive detector. A
+        // single dropped frame must not invalidate an otherwise valid pose.
+        if (results.length === 0) {
+          results = await face
+            .detectAllFaces(
+              tensor,
+              new face.TinyFaceDetectorOptions({
+                inputSize: 416,
+                scoreThreshold: 0.3,
+              }),
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+        }
         if (results.length > 1)
           throw new Error("More than one face was detected. Please scan alone.");
-        if (results[0].detection.box.width < 45)
-          throw new Error("Your face appeared too small in one frame. Move a little closer to the camera.");
+        if (results.length === 0 || results[0].detection.box.width < 45)
+          continue;
         const result = results[0];
+        detectedByPose[poseIndex]++;
         descriptors.push(Array.from(result.descriptor));
         const nose = result.landmarks.getNose()[3];
         const left = result.landmarks.getLeftEye();
@@ -171,12 +186,17 @@ export async function verifyCapture(
         const lx = left.reduce((s: number, p: any) => s + p.x, 0) / left.length;
         const rx =
           right.reduce((s: number, p: any) => s + p.x, 0) / right.length;
-        poses.push((nose.x - (lx + rx) / 2) / Math.abs(rx - lx));
+        poses[poseIndex].push((nose.x - (lx + rx) / 2) / Math.abs(rx - lx));
       } finally {
         tensor.dispose();
       }
     }
-    verifyMotion(poses, instruction);
+    if (detectedByPose.some((count) => count === 0))
+      throw new Error("No face was reliably detected at one position. Keep your face in view during each hold.");
+    const poseAverages = poses.map((group) => group.reduce((a, b) => a + b, 0) / group.length);
+    // Preserve the existing six-value motion validator, using the average
+    // of successfully detected frames from each of the three positions.
+    verifyMotion(poseAverages.flatMap((value) => [value, value]), instruction);
     if (
       descriptors.some((d) => faceDistance(descriptors[0], d) > FACE_THRESHOLD)
     )
