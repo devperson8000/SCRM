@@ -104,8 +104,8 @@ export async function verifyCapture(
   images: string[],
   instruction: string,
 ): Promise<number[]> {
-  if (!Array.isArray(images) || images.length !== FRAME_COUNT)
-    throw new Error("Six fresh camera images are required.");
+  if (!Array.isArray(images) || (images.length !== 1 && images.length !== FRAME_COUNT))
+    throw new Error("One login photo or twenty enrollment photos are required.");
   // Validate all payloads before loading the model or allocating tensors.
   const decoded = images.map(decodeFrame);
   const run = queue.then(async () => {
@@ -136,7 +136,8 @@ export async function verifyCapture(
         tensor.dispose();
       }
     }
-    if (descriptors.length < 12)
+    const minClear = images.length === 1 ? 1 : 12;
+    if (descriptors.length < minClear)
       throw new Error("Not enough clear photos were detected. Keep your face in view and try again.");
     // Choose the most representative descriptor. Reject inconsistent identity
     // while tolerating variations in pose and individual poor frames.
@@ -147,7 +148,7 @@ export async function verifyCapture(
         distances[best].reduce((a, b) => a + b, 0) ? i : best, 0);
     const matching = descriptors.filter((d) =>
       faceDistance(descriptors[index], d) <= FACE_THRESHOLD);
-    if (matching.length < 12)
+    if (matching.length < minClear)
       throw new Error("Photos were not consistent enough to confirm one face. Try again with steadier lighting.");
     return descriptors[index].map((_, i) =>
       matching.reduce((sum, d) => sum + d[i], 0) / matching.length);

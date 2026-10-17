@@ -3,6 +3,7 @@ export async function captureFace(
   host: HTMLElement,
   instruction: string,
   signal: AbortSignal,
+  singlePhoto = false,
 ): Promise<string[]> {
   if (!navigator.mediaDevices?.getUserMedia)
     throw new Error(
@@ -67,11 +68,11 @@ export async function captureFace(
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Camera capture is unavailable.");
     const images: string[] = [];
-    prompt.textContent = "Capturing 20 photos. Look at the camera and gently vary your angle when comfortable; no fixed turns or perfect pose needed.";
+    prompt.textContent = singlePhoto ? "Look straight at the camera for your login photo." : "Capturing 20 photos. Gently vary your angle when comfortable.";
     // 20 fresh images over ~17 seconds. Do not store frames locally once submitted.
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < (singlePhoto ? 1 : 20); i++) {
       if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-      prompt.textContent = `Capturing photo ${i + 1} of 20. Move naturally and keep your face in view.`;
+      prompt.textContent = singlePhoto ? "Hold still for your login photo…" : `Capturing photo ${i + 1} of 20. Move naturally and keep your face in view.`;
       await wait(i === 0 ? 1500 : 850);
       if (video.readyState < 2 || video.videoWidth === 0)
         throw new Error("Camera is not ready. Try again.");

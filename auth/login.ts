@@ -157,6 +157,7 @@ function loginForm(
             captureHost,
             challenge.instruction,
             aborter.signal,
+            purpose === "login",
           );
           message.textContent = "Verifying scan…";
           const result = await authRequest(
