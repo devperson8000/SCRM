@@ -59,9 +59,9 @@ export function verifyMotion(poses: number[], instruction: string) {
   const second = (poses[4] + poses[5]) / 2 - center;
   const direction = instruction === "left-right" ? -1 : 1;
   if (
-    Math.abs(center) > 0.3 ||
-    first * direction < 0.12 ||
-    second * direction > -0.12
+    Math.abs(center) > 0.36 ||
+    first * direction < 0.075 ||
+    second * direction > -0.075
   )
     throw new Error("Follow the head-turn instructions and try again.");
 }
