@@ -60,8 +60,8 @@ export function verifyMotion(poses: number[], instruction: string) {
   // Preview mirroring, webcam drivers and facial-landmark orientation can
   // reverse the sign of yaw. Require two genuine opposite head movements
   // instead of trusting the sign assigned to an on-screen arrow.
-  const minTurn = 0.05;
-  if (Math.abs(center) > 0.42)
+  const minTurn = 0.025;
+  if (Math.abs(center) > 0.5)
     throw new Error("Start with your face looking straight at the camera.");
   if (Math.abs(first) < minTurn)
     throw new Error("First head turn was too small. Turn a little farther toward the first arrow.");
