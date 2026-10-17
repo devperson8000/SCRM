@@ -439,7 +439,7 @@ export class AuthService {
       }
       if (action === "enroll") {
         if (pre.role !== "user") deny(403, "User enrollment required.");
-        if (matches.length)
+        if (matches.some((u) => u.role === "user"))
           deny(
             409,
             "This face already has an enrollment. Contact the administrator.",
@@ -462,8 +462,7 @@ export class AuthService {
       }
       if (pre.role !== "admin")
         deny(403, "Administrator authentication required.");
-      if (matches.some((u) => u.role !== "admin"))
-        deny(409, "This face is already enrolled for another role.");
+      // Administrator and user enrollment are separate, even for the same face.
       const existing = await db.query(
         "SELECT * FROM auth_users WHERE role='admin'",
       );
